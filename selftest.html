@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>engine self-test</title>
+<style>body{font-family:monospace;padding:16px;background:#111;color:#eee}
+.pass{color:#4ecb7d}.fail{color:#ff6b5e}pre{white-space:pre-wrap}</style></head>
+<body>
+<h3 id="head">running…</h3>
+<pre id="out"></pre>
+<script src="engine.js"></script>
+<script>
+// 載入 Python 產出的 500 組標準答案，逐題比對 JS 引擎
+(async function () {
+  const out = document.getElementById('out');
+  const head = document.getElementById('head');
+  try {
+    const vectors = await (await fetch('testvectors.json?' + Date.now())).json();
+    let fails = 0, checked = 0; const samples = [];
+    for (const v of vectors) {
+      const uk = MJ.ukeire(v.counts);
+      const okS = uk.shanten === v.shanten;
+      const okT = uk.total === v.ukeire_total;
+      const okTiles = JSON.stringify(uk.tiles) === JSON.stringify(v.ukeire_tiles);
+      checked++;
+      if (!(okS && okT && okTiles)) {
+        fails++;
+        if (samples.length < 6)
+          samples.push({ counts: v.counts, expect: { s: v.shanten, t: v.ukeire_total, tiles: v.ukeire_tiles }, got: { s: uk.shanten, t: uk.total, tiles: uk.tiles } });
+      }
+    }
+    window.__selftest = { checked, fails, samples };
+    head.textContent = (fails === 0 ? '✅ PASS' : '❌ FAIL') + `  checked=${checked}  fails=${fails}`;
+    head.className = fails === 0 ? 'pass' : 'fail';
+    out.textContent = fails ? JSON.stringify(samples, null, 2) : 'JS 引擎與 Python 標準答案 100% 一致';
+  } catch (e) {
+    window.__selftest = { error: String(e) };
+    head.textContent = 'ERROR ' + e; head.className = 'fail';
+  }
+})();
+</script>
+</body></html>

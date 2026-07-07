@@ -1,0 +1,15 @@
+# 機密 / 憑證（預防性 — 本專案純前端無機密，防未來 git add . 誤掃）
+token.json
+credentials.json
+client_secret.json
+*.env
+*.pem
+*.key
+
+# 系統 / 暫存
+__pycache__/
+*.pyc
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store

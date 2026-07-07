@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>defense self-test</title>
+<style>body{font-family:monospace;padding:16px;background:#111;color:#eee}
+.pass{color:#4ecb7d}.fail{color:#ff6b5e}pre{white-space:pre-wrap}</style></head>
+<body>
+<h3 id="head">running…</h3>
+<pre id="out"></pre>
+<script src="defense.js"></script>
+<script>
+// 載入 Python 產出的防守標準答案，逐題比對 JS 版 defense.js
+(async function () {
+  const out = document.getElementById('out');
+  const head = document.getElementById('head');
+  try {
+    const vectors = await (await fetch('testvectors_defense.json?' + Date.now())).json();
+    let fails = 0, checked = 0; const samples = [];
+    for (const v of vectors) {
+      const got = MJDefense.rankDiscards(v.hand, v.river, v.melds && v.melds.length ? v.melds : null);
+      checked++;
+      const a = JSON.stringify(got), b = JSON.stringify(v.expected);
+      if (a !== b) {
+        fails++;
+        if (samples.length < 6) samples.push({ hand: v.hand, river: v.river, melds: v.melds, got: got, expect: v.expected });
+      }
+    }
+    window.__selftest_def = { checked, fails, samples };
+    head.textContent = (fails === 0 ? '✅ PASS' : '❌ FAIL') + `  checked=${checked}  fails=${fails}`;
+    head.className = fails === 0 ? 'pass' : 'fail';
+    out.textContent = fails ? JSON.stringify(samples, null, 2) : 'JS 防守引擎與 Python 標準答案 100% 一致';
+  } catch (e) {
+    window.__selftest_def = { error: String(e) };
+    head.textContent = 'ERROR ' + e; head.className = 'fail';
+  }
+})();
+</script>
+</body></html>

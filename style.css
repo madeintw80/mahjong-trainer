@@ -1,0 +1,133 @@
+/* 麻將牌效率練習 — 樣式 (手機優先，支援深色模式) */
+:root{
+  --bg:#f4f1ea; --card:#ffffff; --ink:#20242a; --muted:#7c8493;
+  --line:#e3e0d8; --felt:#0f5132; --felt2:#157347;
+  --man:#c0392b; --pin:#1f6feb; --sou:#1e8449; --hon:#6c3483;
+  --good:#1e8449; --mid:#c98a00; --bad:#c0392b;
+  --shadow:0 2px 6px rgba(0,0,0,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#14181d; --card:#1e242b; --ink:#e8ebef; --muted:#9aa4b2;
+    --line:#2c343d; --man:#ff6b5e; --pin:#5aa2ff; --sou:#4ecb7d; --hon:#c99be6;
+    --good:#4ecb7d; --mid:#e6b93a; --bad:#ff6b5e; --shadow:0 2px 8px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  font-family:-apple-system,"PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+  background:var(--bg); color:var(--ink);
+  -webkit-tap-highlight-color:transparent;
+  padding-bottom:env(safe-area-inset-bottom);
+}
+.topbar{
+  background:linear-gradient(135deg,var(--felt),var(--felt2)); color:#fff;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+}
+.brand{font-weight:700; font-size:17px}
+.ver{font-weight:400; font-size:12px; opacity:.7}
+.stats{display:flex; gap:14px; margin-top:8px; font-size:12px; opacity:.95; flex-wrap:wrap}
+.stats b{font-size:14px}
+main{max-width:640px; margin:0 auto; padding:14px}
+
+.diffbar{display:flex; gap:8px; margin-bottom:12px}
+.diff{
+  flex:1; padding:9px 4px; border:1px solid var(--line); border-radius:10px;
+  background:var(--card); color:var(--muted); font-size:12.5px; font-weight:600; cursor:pointer;
+}
+.diff.on{background:var(--felt); color:#fff; border-color:var(--felt)}
+
+.card{
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  padding:14px; margin-bottom:12px; box-shadow:var(--shadow);
+}
+.prompt{font-size:15px; margin-bottom:12px; line-height:1.5}
+.prompt b{color:var(--felt)}
+@media (prefers-color-scheme: dark){ .prompt b{color:var(--sou)} }
+.hint{margin-top:10px; font-size:12.5px; color:var(--muted); text-align:center}
+
+/* 手牌排列 */
+.hand{display:flex; flex-wrap:wrap; gap:5px; justify-content:center}
+.tile{
+  width:42px; height:56px; border-radius:8px; border:1px solid var(--line);
+  background:#fffdf7; color:var(--ink); position:relative; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  box-shadow:inset 0 -3px 0 rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.15);
+  transition:transform .08s, box-shadow .08s; user-select:none;
+}
+.tile:active{transform:translateY(1px)}
+.tile .n{font-size:22px; font-weight:800; line-height:1}
+.tile .s{font-size:11px; margin-top:2px; opacity:.85}
+.tile.honor .n{font-size:20px}
+.tile.m{color:var(--man)} .tile.p{color:var(--pin)}
+.tile.s-suit{color:var(--sou)} .tile.z{color:var(--hon)}
+@media (prefers-color-scheme: dark){ .tile{background:#f3efe6} }
+/* 讓字牌顏色更貼近真牌 */
+.tile.z.red .n{color:#c0392b} .tile.z.green .n{color:#1e8449} .tile.z.white .n{color:#5a6472}
+
+/* 作答後的標記 */
+.tile.picked{outline:3px solid var(--bad); outline-offset:1px}
+.tile.best{outline:3px solid var(--good); outline-offset:1px}
+.tile.pickbest{outline:3px solid var(--good); outline-offset:1px}
+.tile.locked{cursor:default}
+.tile.dim{opacity:.5}
+
+/* 結果 */
+.verdict{font-size:16px; font-weight:800; margin-bottom:10px; display:flex; align-items:center; gap:8px}
+.verdict.good{color:var(--good)} .verdict.mid{color:var(--mid)} .verdict.bad{color:var(--bad)}
+.rank{font-size:13px}
+.rank table{width:100%; border-collapse:collapse}
+.rank th,.rank td{padding:6px 6px; text-align:left; border-bottom:1px solid var(--line)}
+.rank th{color:var(--muted); font-weight:600; font-size:11.5px}
+.rank tr.opt{background:rgba(30,132,73,.10)}
+.rank tr.you{outline:2px solid var(--bad); outline-offset:-2px}
+.rank .tag{font-size:11px; padding:1px 6px; border-radius:6px; color:#fff}
+.rank .tag.opt{background:var(--good)} .rank .tag.you{background:var(--bad)}
+.rank .sh{font-weight:700}
+.rank .uk-tiles{color:var(--muted); font-size:11.5px}
+
+.next{
+  width:100%; margin-top:14px; padding:13px; border:none; border-radius:12px;
+  background:var(--felt); color:#fff; font-size:15px; font-weight:700; cursor:pointer;
+}
+.next:active{background:var(--felt2)}
+.note{font-size:12px; color:var(--muted); line-height:1.6; margin:6px 4px 30px}
+.note b{color:var(--ink)}
+
+/* ===== 模式分頁 ===== */
+.modebar{display:flex; gap:8px; margin-bottom:10px}
+.mode{
+  flex:1; padding:11px 4px; border:1px solid var(--line); border-radius:10px;
+  background:var(--card); color:var(--muted); font-size:14px; font-weight:700; cursor:pointer;
+}
+.mode.on{background:var(--felt); color:#fff; border-color:var(--felt)}
+.hide{display:none !important}
+
+/* ===== 防守：對手牌河 + 副露 ===== */
+.oppo{margin-bottom:12px}
+.oppo-row{margin-bottom:8px}
+.oppo-label{display:block; font-size:11.5px; color:var(--muted); margin-bottom:4px}
+.oppo-tiles{display:flex; flex-wrap:wrap; gap:3px; align-items:center}
+.tile.sm{width:30px; height:40px; border-radius:6px}
+.tile.sm .n{font-size:15px}
+.tile.sm.honor .n{font-size:13px}
+.tile.sm .s{font-size:8px; margin-top:1px}
+.meld{display:flex; gap:2px; padding:3px; margin-right:6px; border:1px dashed var(--felt2); border-radius:7px}
+@media (prefers-color-scheme: dark){ .meld{border-color:var(--sou)} }
+
+/* ===== 白話解釋 ===== */
+.explain{margin:0 0 10px; padding-left:18px; font-size:13px; line-height:1.6}
+.explain li{margin-bottom:4px}
+.explain li:first-child{font-weight:700}
+
+/* ===== 防守：風險徽章 ===== */
+.risk{
+  display:inline-block; min-width:32px; text-align:center; padding:1px 6px;
+  border-radius:6px; font-weight:700; font-size:12px; color:#fff;
+}
+.risk.r0{background:var(--good)}
+.risk.r1{background:#3d7ea6}
+.risk.r2{background:var(--mid)}
+.risk.r3{background:var(--bad)}
+.tag.warn{background:var(--mid)}

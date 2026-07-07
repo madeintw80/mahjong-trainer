@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>麻將練習</title>
+  <meta name="theme-color" content="#0f5132">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="麻將練習">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-180.png">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">🀄 麻將練習 <span class="ver" id="ver"></span></div>
+    <div class="stats" id="stats">
+      <span>題數 <b id="st-total">0</b></span>
+      <span>最佳率 <b id="st-acc">—</b></span>
+      <span>連對 <b id="st-streak">0</b></span>
+      <span>最高連 <b id="st-best">0</b></span>
+    </div>
+  </header>
+
+  <main>
+    <!-- 模式：牌效率 / 防守 -->
+    <div class="modebar" id="modebar">
+      <button class="mode on" data-mode="eff">🀄 牌效率</button>
+      <button class="mode" data-mode="def">🛡️ 防守</button>
+    </div>
+
+    <!-- 難度(三檔，兩模式共用；標籤依模式變) -->
+    <div class="diffbar" id="diffbar">
+      <button class="diff on" data-level="0"></button>
+      <button class="diff" data-level="1"></button>
+      <button class="diff" data-level="2"></button>
+    </div>
+
+    <!-- ============ 牌效率模式 ============ -->
+    <section class="card mode-eff" id="eff-card">
+      <div class="prompt">你剛摸進一張，手上共 17 張——<b>打哪張進張最多？</b></div>
+      <div class="hand" id="hand"><!-- 牌由 JS 產生 --></div>
+      <div class="hint" id="hint">點下面你想打掉的牌</div>
+    </section>
+
+    <section class="card result mode-eff" id="result" hidden>
+      <div class="verdict" id="verdict"></div>
+      <ul class="explain" id="explain"></ul>
+      <div class="rank" id="rank"></div>
+      <button class="next" id="next">下一題 ▶</button>
+    </section>
+
+    <!-- ============ 防守模式 ============ -->
+    <section class="card mode-def" id="def-card" hidden>
+      <div class="prompt">對手很可能<b>聽牌</b>了！你剛摸進一張——<b>打哪張最不會放槍？</b></div>
+      <div class="oppo" id="oppo"><!-- 對手牌河 + 副露 --></div>
+      <div class="hand" id="def-hand"></div>
+      <div class="hint" id="def-hint">點你想打（覺得最安全）的牌</div>
+    </section>
+
+    <section class="card result mode-def" id="def-result" hidden>
+      <div class="verdict" id="def-verdict"></div>
+      <ul class="explain" id="def-explain"></ul>
+      <div class="rank" id="def-rank"></div>
+      <button class="next" id="def-next">下一題 ▶</button>
+    </section>
+
+    <p class="note" id="note"></p>
+  </main>
+
+  <script src="engine.js"></script>
+  <script src="defense.js"></script>
+  <script src="explain.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
