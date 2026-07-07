@@ -3,7 +3,7 @@
    白話解釋兩邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.2.0';
+const APP_VERSION = 'v0.2.1';
 
 // ---- 難度標籤(依模式不同) ----
 const DIFF_LABELS = {
