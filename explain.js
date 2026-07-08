@@ -272,14 +272,31 @@
     const out = [];
     const tie = prob.answers && prob.answers.length > 1;
     if (tie) {
-      // 中央牌拆搭：左右鄰對稱、危險分相同 → 誠實講「兩鄰同險」(這才是衍牌真正的牌理)
       const names = prob.answers.map(t => tl(t)).join('、');
-      out.push('⚠️ 最危險（並列）：' + names + '——拆掉含 ' + tl(prob.N) + ' 的搭子後，' +
-               tl(prob.N) + ' 的<b>左右鄰牌一樣危險</b>（兩邊都能組搭子聽牌）');
+      const nN = prob.N % 9;
+      const someLower = prob.answers.some(t => (t % 9) < nN);   // 有並列危險牌在 N 下方(數字更小)
+      const someHigher = prob.answers.some(t => (t % 9) > nN);  // 有並列危險牌在 N 上方(數字更大)
+      if (someLower && someHigher) {
+        // 中央牌：左右鄰對稱、危險分相同 → 誠實講「兩鄰同險」(衍牌真正的牌理)
+        out.push('⚠️ 最危險（並列）：' + names + '——拆掉含 ' + tl(prob.N) + ' 的搭子後，' +
+                 tl(prob.N) + ' 的<b>左右鄰牌一樣危險</b>（兩邊都能組搭子聽牌）');
+      } else {
+        // 端牌(1/9)：並列危險牌都在同一側(邊緣那側沒牌可接) → 講「同側並列」而非「左右」
+        const side = someHigher ? '數字較大' : '數字較小';
+        out.push('⚠️ 最危險（並列）：' + names + '——' + tl(prob.N) + ' 是<b>端牌</b>，這幾張都在<b>' +
+                 side + '的一側</b>（往中央走）、危險一樣高，這就是端牌拆搭的<b>不對稱</b>');
+      }
     } else {
       const shapeCn = top.shapes.map(s => NOBE_SHAPE[s]).join('、');
       out.push('⚠️ 最危險 ' + tl(top.tile) + '（危險分 ' + top.score + '）：對手拆掉含 ' + tl(prob.N) +
                ' 的搭子後，還能用 ' + shapeCn + ' 這些搭子聽到它');
+      // P6-1 端牌(1/2/8/9)：靠牌河邊緣那側幾乎沒牌可接 → 危險偏單側、不對稱(有別中央牌左右都危)
+      const nEdge = prob.N % 9;
+      if (nEdge <= 1 || nEdge >= 7) {
+        const side = nEdge <= 1 ? '數字較大' : '數字較小';
+        out.push('🔸 ' + tl(prob.N) + ' 是<b>端牌</b>，靠牌河邊緣那側幾乎沒牌可接 → 危險<b>偏向' + side +
+                 '的一側</b>（往中央走），不像中央牌左右都得防——這就是端牌拆搭的<b>不對稱</b>');
+      }
     }
     out.push('為什麼真牌在 ' + tl(prob.N) + ' 附近：他拆一個含 ' + tl(prob.N) + ' 的搭子、丟出 ' + tl(prob.N) +
              '，是為了讓「旁邊」成型才拆——搭子由相鄰牌組成，所以真牌就落在丟出牌的鄰近');

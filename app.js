@@ -6,7 +6,7 @@
    白話解釋三邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.5.0';
+const APP_VERSION = 'v0.5.1';
 
 // ---- 難度標籤(牌效率/防守用；牌理改用子題型 bar) ----
 const DIFF_LABELS = {
@@ -700,7 +700,7 @@ function topAnswers(res) {
 function genNobe() {
   for (let tries = 0; tries < 400; tries++) {
     const suit = randint(0, 2);
-    const N = suit * 9 + randint(2, 6);               // 牌3~7(中央牌，端牌邊界少見拆搭故避開)
+    const N = suit * 9 + randint(0, 8);               // 牌1~9 全段(P6-1:放寬含端牌1/2/8/9，練端牌不對稱拆搭)
     const river = [];
     if (Math.random() < 0.5) {                         // 一半機率丟一張同門現物：可能剛好排除某鄰牌
       const base = MJRead.nobeAnalyze(N, []);          //   → 打破左右對稱，練「現物排除、另一邊才危險」
