@@ -25,17 +25,25 @@
   </header>
 
   <main>
-    <!-- 模式：牌效率 / 防守 -->
+    <!-- 模式：牌效率 / 防守 / 牌理 -->
     <div class="modebar" id="modebar">
       <button class="mode on" data-mode="eff">🀄 牌效率</button>
       <button class="mode" data-mode="def">🛡️ 防守</button>
+      <button class="mode" data-mode="lab">📚 牌理</button>
     </div>
 
-    <!-- 難度(三檔，兩模式共用；標籤依模式變) -->
+    <!-- 難度(三檔，牌效率/防守用；標籤依模式變) -->
     <div class="diffbar" id="diffbar">
       <button class="diff on" data-level="0"></button>
       <button class="diff" data-level="1"></button>
       <button class="diff" data-level="2"></button>
+    </div>
+
+    <!-- 子題型(牌理用；預設隱藏，切到牌理模式才顯示) -->
+    <div class="subbar hide" id="subbar">
+      <button class="sub on" data-sub="atk">⚔️ 攻守</button>
+      <button class="sub" data-sub="iso">🎴 孤張</button>
+      <button class="sub" data-sub="wait">🎯 選聽</button>
     </div>
 
     <!-- ============ 牌效率模式 ============ -->
@@ -65,6 +73,37 @@
       <ul class="explain" id="def-explain"></ul>
       <div class="rank" id="def-rank"></div>
       <button class="next" id="def-next">下一題 ▶</button>
+    </section>
+
+    <!-- ============ 牌理：① 該攻該守(判斷題) ============ -->
+    <section class="card mode-lab sub-atk hide" id="atk-card">
+      <div class="prompt">看這手 16 張的牌——<b>該攻，還是該守？</b></div>
+      <div class="hand" id="atk-hand"></div>
+      <div class="choicebar">
+        <button class="choice atk" data-ans="atk">⚔️ 該攻</button>
+        <button class="choice def" data-ans="def">🛡️ 該守</button>
+      </div>
+      <div class="hint" id="atk-hint">看「幾進聽」決定：好牌全力追聽、爛牌提早轉守</div>
+    </section>
+
+    <section class="card result mode-lab sub-atk hide" id="atk-result" hidden>
+      <div class="verdict" id="atk-verdict"></div>
+      <ul class="explain" id="atk-explain"></ul>
+      <button class="next" id="atk-next">下一題 ▶</button>
+    </section>
+
+    <!-- ============ 牌理：② 孤張 / ③ 選聽(點牌題，共用一組卡) ============ -->
+    <section class="card mode-lab sub-pick hide" id="pick-card">
+      <div class="prompt" id="pick-prompt"></div>
+      <div class="hand" id="pick-hand"></div>
+      <div class="hint" id="pick-hint">點下面你想打掉的牌</div>
+    </section>
+
+    <section class="card result mode-lab sub-pick hide" id="pick-result" hidden>
+      <div class="verdict" id="pick-verdict"></div>
+      <ul class="explain" id="pick-explain"></ul>
+      <div class="rank" id="pick-rank"></div>
+      <button class="next" id="pick-next">下一題 ▶</button>
     </section>
 
     <p class="note" id="note"></p>

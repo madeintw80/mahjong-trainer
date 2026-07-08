@@ -131,3 +131,25 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .risk.r2{background:var(--mid)}
 .risk.r3{background:var(--bad)}
 .tag.warn{background:var(--mid)}
+
+/* ===== 牌理：子題型 bar(仿難度 bar，攻守/孤張/選聽切換) ===== */
+.subbar{display:flex; gap:8px; margin-bottom:12px}
+.sub{
+  flex:1; padding:9px 4px; border:1px solid var(--line); border-radius:10px;
+  background:var(--card); color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;
+}
+.sub.on{background:var(--felt); color:#fff; border-color:var(--felt)}
+
+/* ===== 牌理：該攻該守 判斷按鈕 ===== */
+.choicebar{display:flex; gap:12px; margin-top:14px}
+.choice{
+  flex:1; padding:16px 4px; border:2px solid var(--line); border-radius:12px;
+  background:var(--card); font-size:17px; font-weight:800; cursor:pointer;
+  transition:transform .08s;
+}
+.choice:active{transform:translateY(1px)}
+.choice.atk{color:var(--bad)}      /* 攻 = 火紅(進攻) */
+.choice.def{color:var(--pin)}      /* 守 = 冷藍(防守) */
+.choice.locked{cursor:default; opacity:.6}
+.choice.correct{border-color:var(--good); background:rgba(30,132,73,.14); opacity:1}  /* 正解框綠 */
+.choice.wrong{border-color:var(--bad); background:rgba(192,57,43,.12); opacity:1}      /* 答錯框紅 */
