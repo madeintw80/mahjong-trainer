@@ -25,11 +25,12 @@
   </header>
 
   <main>
-    <!-- 模式：牌效率 / 防守 / 牌理 -->
+    <!-- 模式：牌效率 / 防守 / 牌理 / 心法 -->
     <div class="modebar" id="modebar">
       <button class="mode on" data-mode="eff">🀄 牌效率</button>
       <button class="mode" data-mode="def">🛡️ 防守</button>
       <button class="mode" data-mode="lab">📚 牌理</button>
+      <button class="mode" data-mode="tips">📖 心法</button>
     </div>
 
     <!-- 難度(三檔，牌效率/防守用；標籤依模式變) -->
@@ -106,12 +107,18 @@
       <button class="next" id="pick-next">下一題 ▶</button>
     </section>
 
+    <!-- ============ 心法(純教學卡，手風琴摺疊；內容由 tips.js + JS 生成) ============ -->
+    <section class="mode-tips hide" id="tips-card">
+      <div class="tips-list" id="tips-list"><!-- 摺疊卡由 renderTips() 產生 --></div>
+    </section>
+
     <p class="note" id="note"></p>
   </main>
 
   <script src="engine.js"></script>
   <script src="defense.js"></script>
   <script src="explain.js"></script>
+  <script src="tips.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

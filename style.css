@@ -95,11 +95,12 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .note{font-size:12px; color:var(--muted); line-height:1.6; margin:6px 4px 30px}
 .note b{color:var(--ink)}
 
-/* ===== 模式分頁 ===== */
-.modebar{display:flex; gap:8px; margin-bottom:10px}
+/* ===== 模式分頁(4 顆：手機一排會擠→縮字級/gap+不換行；螢幕極窄才自動折成兩排) ===== */
+.modebar{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap}
 .mode{
-  flex:1; padding:11px 4px; border:1px solid var(--line); border-radius:10px;
-  background:var(--card); color:var(--muted); font-size:14px; font-weight:700; cursor:pointer;
+  flex:1 1 0; min-width:68px; padding:11px 3px; border:1px solid var(--line); border-radius:10px;
+  background:var(--card); color:var(--muted); font-size:13px; font-weight:700; cursor:pointer;
+  white-space:nowrap; text-align:center;
 }
 .mode.on{background:var(--felt); color:#fff; border-color:var(--felt)}
 .hide{display:none !important}
@@ -153,3 +154,65 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .choice.locked{cursor:default; opacity:.6}
 .choice.correct{border-color:var(--good); background:rgba(30,132,73,.14); opacity:1}  /* 正解框綠 */
 .choice.wrong{border-color:var(--bad); background:rgba(192,57,43,.12); opacity:1}      /* 答錯框紅 */
+
+/* ===== 心法：手風琴摺疊卡 ===== */
+.tips-list{display:flex; flex-direction:column; gap:10px}
+.tips-item{
+  background:var(--card); border:1px solid var(--line); border-radius:14px;
+  box-shadow:var(--shadow); overflow:hidden;
+}
+/* 標題列(點擊區)：emoji + 標題/副標 + 展開箭頭 */
+.tips-head{
+  width:100%; display:flex; align-items:center; gap:10px; padding:14px;
+  background:none; border:none; cursor:pointer; text-align:left; color:var(--ink);
+}
+.tips-emoji{font-size:22px; line-height:1; flex-shrink:0}
+.tips-tt{display:flex; flex-direction:column; gap:2px; flex:1; min-width:0}
+.tips-title{font-size:15.5px; font-weight:800}
+.tips-sub{font-size:12px; color:var(--muted); font-weight:500}
+.tips-arrow{font-size:13px; color:var(--muted); transition:transform .2s; flex-shrink:0}
+.tips-item.open .tips-arrow{transform:rotate(180deg)}          /* 展開時箭頭翻轉 */
+.tips-item.open .tips-head{border-bottom:1px solid var(--line)}
+.tips-body{display:none; padding:14px}                         /* 預設收合 */
+.tips-item.open .tips-body{display:block}
+
+/* ===== 心法：內文排版 ===== */
+.tips-body .t-lead{font-size:13.5px; color:var(--muted); line-height:1.6; margin:0 0 12px}
+.tips-body .t-h{font-size:14.5px; font-weight:800; color:var(--felt); margin:14px 0 6px}
+.tips-body .t-h:first-child{margin-top:0}
+@media (prefers-color-scheme: dark){ .tips-body .t-h{color:var(--sou)} }
+.tips-body p{font-size:13.5px; line-height:1.65; margin:6px 0}
+.tips-body .t-ul{margin:6px 0; padding-left:20px; font-size:13.5px; line-height:1.65}
+.tips-body .t-ul li{margin-bottom:5px}
+/* 「為什麼」白話塊：左邊綠框+淡底，把道理凸顯出來(用戶重理解) */
+.tips-body .t-why{
+  border-left:3px solid var(--felt); background:rgba(15,81,50,.06);
+  padding:8px 10px; border-radius:0 8px 8px 0; margin:8px 0; font-size:13px; line-height:1.6;
+}
+/* 「正解」塊：反面教材用的綠框(跟為什麼區隔) */
+.tips-body .t-fix{
+  border-left:3px solid var(--good); background:rgba(30,132,73,.07);
+  padding:7px 10px; border-radius:0 8px 8px 0; margin:6px 0 12px; font-size:13px; line-height:1.6;
+}
+@media (prefers-color-scheme: dark){
+  .tips-body .t-why{border-left-color:var(--sou); background:rgba(78,203,125,.08)}
+}
+/* 口訣/金句：置中強調 */
+.tips-body .t-quote{
+  text-align:center; font-weight:800; color:var(--felt); font-size:14.5px; line-height:1.5;
+  padding:10px; margin:10px 0; background:rgba(15,81,50,.06); border-radius:10px;
+}
+@media (prefers-color-scheme: dark){
+  .tips-body .t-quote{color:var(--sou); background:rgba(78,203,125,.08)}
+}
+.tips-body .t-note{
+  font-size:12.5px; color:var(--muted); line-height:1.6; margin:12px 0 0;
+  padding-top:10px; border-top:1px dashed var(--line);
+}
+/* 內文表格 */
+.tips-body .t-tbl{width:100%; border-collapse:collapse; margin:8px 0; font-size:12.5px}
+.tips-body .t-tbl th,.tips-body .t-tbl td{
+  padding:6px 8px; text-align:left; border-bottom:1px solid var(--line); line-height:1.5;
+}
+.tips-body .t-tbl th{color:var(--muted); font-weight:600; font-size:11.5px}
+.tips-body .t-tbl tr:last-child td{border-bottom:none}

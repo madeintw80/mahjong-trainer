@@ -6,7 +6,7 @@
    白話解釋三邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.3.0';
+const APP_VERSION = 'v0.4.0';
 
 // ---- 難度標籤(牌效率/防守用；牌理改用子題型 bar) ----
 const DIFF_LABELS = {
@@ -551,6 +551,37 @@ function showResult(sel) {
 }
 
 // =====================================================================
+//  心法 (純教學卡，手風琴摺疊；內容來自 tips.js 的 MJTips)
+// =====================================================================
+let tipsBuilt = false;                                  // 內容是靜態的，只生成一次
+function renderTips() {
+  if (tipsBuilt) return;
+  const list = document.getElementById('tips-list');
+  // 每個主題 = 一張可摺疊卡：標題列(head) + 內文(body)。預設全收合，點標題才展開。
+  list.innerHTML = MJTips.map((t, i) => (
+    '<article class="tips-item" data-i="' + i + '">' +
+      '<button class="tips-head" type="button" aria-expanded="false">' +
+        '<span class="tips-emoji">' + t.emoji + '</span>' +
+        '<span class="tips-tt">' +
+          '<span class="tips-title">' + t.title + '</span>' +
+          '<span class="tips-sub">' + t.sub + '</span>' +
+        '</span>' +
+        '<span class="tips-arrow">▾</span>' +
+      '</button>' +
+      '<div class="tips-body">' + t.body + '</div>' +
+    '</article>'
+  )).join('');
+  tipsBuilt = true;
+}
+
+// 點標題 → 展開/收合該卡(各卡獨立，可同時展開多張，方便對照)
+function toggleTip(head) {
+  const item = head.closest('.tips-item');
+  const open = item.classList.toggle('open');
+  head.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+// =====================================================================
 //  下一題 / 模式 / 難度 / 子題型 / 啟動
 // =====================================================================
 function nextProblem() {
@@ -584,6 +615,8 @@ function updateNote() {
     html = '<b>牌效率</b>：練「進張最多」的直覺。對局還要看安全牌與場況——切到 🛡️ 防守 練「少放槍」。';
   } else if (mode === 'def') {
     html = '<b>防守</b>：假設對手已聽牌，練「讀安全牌」。風險是教學相對分（現物 0 → 無筋中張最高），非真實放槍率；筋只擋兩面，嵌張/單騎照樣中。';
+  } else if (mode === 'tips') {
+    html = '<b>心法</b>：橫飛的觀念與戰術精華，純閱讀不作答。點主題展開細讀——練牌卡住時回來複習觀念最有效。';
   } else {
     const labNotes = {
       atk: '<b>牌理 · 攻守</b>：橫飛「快速原則」——手牌好壞用<b>幾進聽</b>量化。0~3 進聽是好牌該攻、6 進聽以上是爛牌該守；爛牌擺明快不起來，早點轉守才不放槍。',
@@ -601,12 +634,23 @@ function setMode(m) {
   document.querySelectorAll('.mode-eff').forEach(el => el.classList.toggle('hide', m !== 'eff'));
   document.querySelectorAll('.mode-def').forEach(el => el.classList.toggle('hide', m !== 'def'));
   document.querySelectorAll('.mode-lab').forEach(el => el.classList.toggle('hide', m !== 'lab'));
-  // 難度 bar 只在牌效率/防守顯示；牌理改顯示子題型 bar(一條 bar 兩用)
-  document.getElementById('diffbar').classList.toggle('hide', m === 'lab');
+  document.querySelectorAll('.mode-tips').forEach(el => el.classList.toggle('hide', m !== 'tips'));
+
+  const isTips = m === 'tips';
+  // 難度 bar 只在牌效率/防守顯示；子題型 bar 只在牌理；心法兩者都不需要
+  document.getElementById('diffbar').classList.toggle('hide', m === 'lab' || isTips);
   document.getElementById('subbar').classList.toggle('hide', m !== 'lab');
+  // 心法是純閱讀、沒有作答統計 → 隱藏上方統計列
+  document.getElementById('stats').classList.toggle('hide', isTips);
+
+  updateNote();
+
+  if (isTips) {                                         // 心法：畫手風琴、不出題、不碰統計
+    renderTips();
+    return;
+  }
   if (m === 'lab') applyLabSub();                       // 決定 atk / pick 哪組卡顯示
   else updateDiffLabels();
-  updateNote();
   renderStats();
   nextProblem();
 }
@@ -642,6 +686,11 @@ function init() {
   document.getElementById('def-next').addEventListener('click', nextProblem);
   document.getElementById('atk-next').addEventListener('click', nextProblem);
   document.getElementById('pick-next').addEventListener('click', nextProblem);
+  // 心法手風琴：用事件委派(卡片內容由 renderTips 才生成，直接綁會綁不到)
+  document.getElementById('tips-list').addEventListener('click', e => {
+    const head = e.target.closest('.tips-head');
+    if (head) toggleTip(head);
+  });
 
   updateDiffLabels();
   updateNote();
