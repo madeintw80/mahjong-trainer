@@ -6,7 +6,7 @@
    白話解釋三邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.5.1';
+const APP_VERSION = 'v0.6.0';
 
 // ---- 難度標籤(牌效率/防守用；牌理改用子題型 bar) ----
 const DIFF_LABELS = {
@@ -536,7 +536,7 @@ function renderDefenseResult(entry, isSafe, pos) {
 //  三子題型：press 向下壓(門選判斷) / gua 六掛(點牌選最危險) / nobe 衍牌(點牌選最危險)
 // =====================================================================
 const READ_PROMPT = {
-  gua: '看對手<b>依序</b>的捨牌河（左早右晚）——下面哪張<b>最危險</b>？',
+  gua: '看對手<b>依序</b>的捨牌河（左早右晚）——下面哪張<b>最危險</b>？（最晚出現、或整段沒出現的掛都危險）',
   nobe: '對手剛<b>拆搭</b>打出一張牌——他要的牌最可能是<b>哪一張</b>？',
 };
 
@@ -561,31 +561,49 @@ function renderRiverInto(containerId, river, label, numbered) {
 }
 
 // =========================== ① 向下壓 press ===========================
-// 構造「恰好一門整條安全(pressed)」的捨牌河：安全門捨低段(2/3)+高段(7/8)，其餘門只表態一邊
+// 從 pressAnalyze 結果蒐集所有「安全半掛」= {suit, half}('low'=小掛1-4 / 'high'=大掛6-9)
+function collectSafeHalves(res) {
+  const answers = [];
+  for (const r of res) {
+    if (r.low_safe) answers.push({ suit: r.suit, half: 'low' });   // 丟過低段核心→小掛半安全
+    if (r.high_safe) answers.push({ suit: r.suit, half: 'high' });  // 丟過高段核心→大掛半安全
+  }
+  return answers;
+}
+// P6-2 構造「恰好一門有向下壓訊號」的捨牌河：
+//   半壓題(only low/high)→ 該門 1 個安全半掛；全壓題(low+high)→ 該門低+高 2 個並列安全半掛。
+//   其他門只丟端牌/樞紐/中央(牌1/5/9/4/6)當干擾，不觸發任何 safe → 保證答案聚焦在目標門。
 function genPress() {
   for (let tries = 0; tries < 800; tries++) {
-    const safeSuit = randint(0, 2);
+    const targetSuit = randint(0, 2);
+    const full = Math.random() < 0.35;                         // 35% 全壓(整條=兩半並列)、65% 半壓
+    const targetHalf = ['low', 'high'][randint(0, 1)];         // 半壓題壓哪半
     const river = [];
-    river.push(safeSuit * 9 + [1, 2][randint(0, 1)]);          // 低段代表 2 或 3
-    river.push(safeSuit * 9 + [6, 7][randint(0, 1)]);          // 高段代表 7 或 8
-    if (Math.random() < 0.5) river.push(safeSuit * 9 + [3, 4, 5][randint(0, 2)]); // 中央雜訊(不影響)
+    const dropLow = () => river.push(targetSuit * 9 + [1, 2][randint(0, 1)]);   // 低段核心 牌2/3
+    const dropHigh = () => river.push(targetSuit * 9 + [6, 7][randint(0, 1)]);  // 高段核心 牌7/8
+    if (full) { dropLow(); dropHigh(); }
+    else if (targetHalf === 'low') dropLow();
+    else dropHigh();
+    if (Math.random() < 0.5) river.push(targetSuit * 9 + [3, 4, 5][randint(0, 2)]); // 中央雜訊(牌4/5/6，不影響)
+    // 其他兩門：只丟不觸發 safe 的牌(牌1/5/9端樞、牌4/6中央) → 玩家要能分辨「這些不是向下壓訊號」
+    const NOISE = [0, 4, 8, 3, 5];                             // n: 牌1,5,9,4,6(都不是 2/3/7/8)
     for (let s = 0; s < 3; s++) {
-      if (s === safeSuit) continue;
-      const kind = randint(0, 2);                              // 其他門只表態一邊 → 保證 not pressed
-      if (kind === 0) river.push(s * 9 + [1, 2][randint(0, 1)]);      // 只低段
-      else if (kind === 1) river.push(s * 9 + [6, 7][randint(0, 1)]); // 只高段
-      else river.push(s * 9 + [0, 4, 8][randint(0, 2)]);             // 端/樞紐(1/5/9)
-      if (Math.random() < 0.6) river.push(s * 9 + [3, 4, 5][randint(0, 2)]);
+      if (s === targetSuit) continue;
+      const cnt = randint(1, 2);
+      for (let k = 0; k < cnt; k++) river.push(s * 9 + NOISE[randint(0, NOISE.length - 1)]);
     }
     if (Math.random() < 0.6) river.push(27 + randint(0, 6));   // 字牌雜訊
-    if (Math.random() < 0.3) river.push(27 + randint(0, 6));
     shuffle(river);
     const res = MJRead.pressAnalyze(river);
-    const pressed = res.filter(r => r.pressed);
-    if (pressed.length === 1 && pressed[0].suit === safeSuit) return { river, res, answer: safeSuit };
+    const answers = collectSafeHalves(res);
+    // 接受條件：安全半掛數量 = 預期(全壓2/半壓1) 且全部落在目標門 → 恰好一個安全區域
+    if (answers.length === (full ? 2 : 1) && answers.every(a => a.suit === targetSuit)) {
+      return { river, res, answers, full };
+    }
   }
-  const river = [1, 7, 9, 26]; shuffle(river);                 // 保底：萬子2+8夾，筒1/索9各一
-  return { river, res: MJRead.pressAnalyze(river), answer: 0 };
+  const river = [2, 9 + 4, 18 + 8]; shuffle(river);            // 保底：3萬(低)壓小掛，5筒/9索當雜訊
+  const res = MJRead.pressAnalyze(river);
+  return { river, res, answers: collectSafeHalves(res), full: false };
 }
 
 function renderPress() {
@@ -595,39 +613,53 @@ function renderPress() {
   document.getElementById('press-result').hidden = true;
 }
 
-function onAnswerPress(suit) {
+function onAnswerPress(suit, half) {
   if (answered) return;
   answered = true;
-  const correct = suit === pressProblem.answer;
+  const correct = pressProblem.answers.some(a => a.suit === suit && a.half === half);
   const s = stats(); s.total++;
   if (correct) { s.correct++; s.streak++; if (s.streak > s.best) s.best = s.streak; } else s.streak = 0;
   saveStats(); renderStats();
   document.querySelectorAll('#press-choices .choice').forEach(b => {
     b.classList.add('locked');
-    if (+b.dataset.suit === pressProblem.answer) b.classList.add('correct');
-    if (+b.dataset.suit === suit && !correct) b.classList.add('wrong');
+    const bs = +b.dataset.suit, bh = b.dataset.half;
+    const isAns = pressProblem.answers.some(a => a.suit === bs && a.half === bh);
+    if (isAns) b.classList.add('correct');                    // 所有安全半掛都標綠(整條壓時低+高並列)
+    if (bs === suit && bh === half && !correct) b.classList.add('wrong');
   });
-  renderPressResult(suit, correct);
+  renderPressResult(suit, half, correct);
 }
 
 const SUIT_CN = ['萬', '筒', '索'];
-function renderPressResult(pickedSuit, correct) {
+// 半掛顯示名：{suit, half} → 例「萬子 1-4（小掛）」
+function pressHalfLabel(a) {
+  return SUIT_CN[a.suit] + '子 ' + (a.half === 'low' ? '1-4（小掛）' : '6-9（大掛）');
+}
+function renderPressResult(pickedSuit, pickedHalf, correct) {
   const v = document.getElementById('press-verdict');
   v.className = 'verdict ' + (correct ? 'good' : 'bad');
-  v.innerHTML = (correct ? '🎯 答對！' : '❌ 答錯了，') + SUIT_CN[pressProblem.answer] + '子整條安全（向下壓）';
-  renderExplain('#press-explain', MJExplain.pressRead(pressProblem, pickedSuit));
+  const ansNames = pressProblem.answers.map(pressHalfLabel).join('、');
+  v.innerHTML = (correct ? '🎯 答對！' : '❌ 答錯了，') + '最安全是 ' + ansNames +
+    (pressProblem.full ? '（整條壓）' : '（半條壓）');
+  renderExplain('#press-explain', MJExplain.pressRead(pressProblem, pickedSuit, pickedHalf));
+  // 逐半掛列判定：3 門各拆低半(1-4)/高半(6-9)共 6 列，標出安全/要防、答案、玩家選的
   let rows = '';
-  for (const r of pressProblem.res) {
-    const isAns = r.suit === pressProblem.answer;
-    const you = r.suit === pickedSuit;
-    const status = r.pressed ? '<span class="risk r0">整條安全</span>' : '<span class="risk r3">仍要防</span>';
-    const dq = r.discarded.length ? r.discarded.map(n => MJ.tileLabel(r.suit * 9 + n)).join(' ') : '—';
-    rows += '<tr class="' + (isAns ? 'opt ' : '') + (you ? 'you' : '') + '"><td>' + SUIT_CN[r.suit] + '子</td><td>' + status + '</td>' +
-      '<td class="uk-tiles">低' + (r.low_hit ? '✅' : '—') + '　高' + (r.high_hit ? '✅' : '—') + '</td>' +
-      '<td class="uk-tiles">' + dq + '</td></tr>';
+  for (let s = 0; s < 3; s++) {
+    const r = pressProblem.res.find(x => x.suit === s);
+    for (const half of ['low', 'high']) {
+      const safe = half === 'low' ? r.low_safe : r.high_safe;
+      const hit = half === 'low' ? r.low_hit : r.high_hit;
+      const isAns = pressProblem.answers.some(a => a.suit === s && a.half === half);
+      const you = s === pickedSuit && half === pickedHalf;
+      const range = half === 'low' ? '1-4' : '6-9';
+      const core = half === 'low' ? '低段2/3' : '高段7/8';
+      const status = safe ? '<span class="risk r0">安全</span>' : '<span class="risk r3">要防</span>';
+      rows += '<tr class="' + (isAns ? 'opt ' : '') + (you ? 'you' : '') + '"><td>' + SUIT_CN[s] + '子' + range +
+        '</td><td>' + status + '</td><td class="uk-tiles">' + core + (hit ? ' 丟過✅' : ' 沒丟—') + '</td></tr>';
+    }
   }
   document.getElementById('press-rank').innerHTML =
-    '<table><tr><th>門</th><th>判定</th><th>低/高段</th><th>捨過</th></tr>' + rows + '</table>';
+    '<table><tr><th>半掛</th><th>判定</th><th>向下壓訊號</th></tr>' + rows + '</table>';
   showResult('#press-result');
 }
 
@@ -645,13 +677,27 @@ function guaRepTile(suit, gua, used) {
   return null;
 }
 
-// 構造「某掛最晚出現(唯一最危險)」的有順序捨牌河
+// 為全 6 掛各生一張候選代表牌(present 掛+absent 掛都要，讓沒出現的掛也能被點選)
+// answers = 所有 danger 掛(最晚出現的 present + 完全沒出現的 absent)的代表牌 → 並列都算對
+function buildGuaCands(res, used) {
+  const cands = [];
+  for (const o of res) {                               // res 已含全 6 掛
+    const rep = guaRepTile(o.suit, o.gua, used);
+    if (rep == null) return null;
+    cands.push({ tile: rep, suit: o.suit, gua: o.gua, first_turn: o.first_turn, present: o.present, danger: o.danger });
+    used.add(rep);
+  }
+  return cands;
+}
+// P6-3 方案A 構造：present 4~5 掛依序丟出、1~2 掛完全沒出現(當陷阱)；
+//   answers = 最晚出現的掛 + 所有沒出現的掛(2~3 張並列，點哪個都算對)。
 function genGua() {
+  const ALL = [];
+  for (let s = 0; s < 3; s++) for (const g of ['small', 'big']) ALL.push({ suit: s, gua: g });
   for (let tries = 0; tries < 800; tries++) {
-    const allGua = [];
-    for (let s = 0; s < 3; s++) for (const g of ['small', 'big']) allGua.push({ suit: s, gua: g });
-    shuffle(allGua);
-    const chosen = allGua.slice(0, randint(4, 5));    // 4~5 掛參與；chosen 最後一個最晚出現=最危險
+    const shuffled = ALL.slice(); shuffle(shuffled);
+    const nPresent = randint(4, 5);                    // 4~5 掛出現 → 1~2 掛完全沒出現
+    const chosen = shuffled.slice(0, nPresent);        // 依序丟，最後一個最晚出現
     const river = [];
     const used = new Set();
     let ok = true;
@@ -663,30 +709,22 @@ function genGua() {
     if (!ok) continue;
     const res = MJRead.guaAnalyze(river);
     const present = res.filter(r => r.present);
-    if (present.length < 3) continue;
-    if (present[0].first_turn === present[1].first_turn) continue;   // 最危險要唯一
-    const danger = present[0];
-    const cands = [];
-    let cok = true;
-    for (const g of present) {                          // 每個有出現的掛給一張候選牌
-      const rep = guaRepTile(g.suit, g.gua, used);
-      if (rep == null) { cok = false; break; }
-      cands.push({ tile: rep, suit: g.suit, gua: g.gua, first_turn: g.first_turn });
-      used.add(rep);
-    }
-    if (!cok || cands.length < 3) continue;
-    const answer = cands.find(c => c.suit === danger.suit && c.gua === danger.gua).tile;
+    if (present.length !== nPresent) continue;         // 全部都要有出現(防呆)
+    if (present[0].first_turn === present[1].first_turn) continue;   // 最晚出現要唯一(present 天然互異，防呆)
+    const cands = buildGuaCands(res, used);
+    if (!cands) continue;
+    // answers = 所有 danger 掛代表牌(最晚present 1 個 + absent 1~2 個 = 2~3 張並列)
+    const answers = cands.filter(c => c.danger).map(c => c.tile);
+    if (answers.length < 2) continue;                  // 方案A要「最晚 + 沒出現」並列，至少 2 張
     shuffle(cands);                                     // 打散候選顯示順序
-    return { river, res, present, cands, answer, answers: [answer], dangerGua: danger };
+    return { river, res, cands, answers, dangerList: res.filter(r => r.danger) };
   }
-  // 保底：萬小(2萬)→筒大(8筒)→索小(2索)，索小最晚
+  // 保底：只 3 掛出現(萬小2萬→筒大8筒→索小2索)、3 掛沒出現 → danger=索小(最晚)+3 absent
   const river = [1, 9 + 7, 18 + 1];
   const res = MJRead.guaAnalyze(river);
-  const present = res.filter(r => r.present);
-  const danger = present[0];
-  const cands = present.map(g => ({ tile: guaRepTile(g.suit, g.gua, new Set(river)), suit: g.suit, gua: g.gua, first_turn: g.first_turn }));
-  const answer = cands.find(c => c.suit === danger.suit && c.gua === danger.gua).tile;
-  return { river, res, present, cands, answer, dangerGua: danger };
+  const cands = buildGuaCands(res, new Set(river)) || [];
+  const answers = cands.filter(c => c.danger).map(c => c.tile);
+  return { river, res, cands, answers, dangerList: res.filter(r => r.danger) };
 }
 
 // =========================== ③ 衍牌 nobe ===========================
@@ -764,13 +802,14 @@ function renderReadPickResult(pickedTile, correct) {
   let rows = '';
   if (rsub === 'gua') {
     const GN = { small: '小掛', big: '大掛' };
-    for (const c of prob.present) {                    // 各掛依危險(present 已排序)列表
+    for (const c of prob.res) {                         // 全 6 掛，res 已按危險→安全排序
       const rep = prob.cands.find(x => x.suit === c.suit && x.gua === c.gua);
-      const isAns = c.suit === prob.dangerGua.suit && c.gua === prob.dangerGua.gua;
       const you = rep && pickedTile === rep.tile;
-      rows += '<tr class="' + (isAns ? 'opt ' : '') + (you ? 'you' : '') + '"><td>' + (rep ? MJ.tileLabel(rep.tile) : '—') +
-        '</td><td>' + SUIT_CN[c.suit] + GN[c.gua] + '</td><td class="sh">第 ' + (c.first_turn + 1) + ' 巡</td>' +
-        '<td class="uk-tiles">' + (isAns ? '最晚→最危險' : '較早→較安全') + '</td></tr>';
+      const when = c.present ? ('第 ' + (c.first_turn + 1) + ' 巡') : '沒出現';
+      const read = c.danger ? (c.present ? '最晚→最危險' : '沒出現→也危險') : '較早→較安全';
+      rows += '<tr class="' + (c.danger ? 'opt ' : '') + (you ? 'you' : '') + '"><td>' + (rep ? MJ.tileLabel(rep.tile) : '—') +
+        '</td><td>' + SUIT_CN[c.suit] + GN[c.gua] + '</td><td class="sh">' + when + '</td>' +
+        '<td class="uk-tiles">' + read + '</td></tr>';
     }
     document.getElementById('read-rank').innerHTML =
       '<table><tr><th>候選</th><th>掛</th><th>首次出現</th><th>判讀</th></tr>' + rows + '</table>';
@@ -887,8 +926,8 @@ function updateNote() {
     html = '<b>心法</b>：橫飛的觀念與戰術精華，純閱讀不作答。點主題展開細讀——練牌卡住時回來複習觀念最有效。';
   } else if (mode === 'read') {
     const readNotes = {
-      press: '<b>讀牌 · 向下壓</b>：對手把一門的低段(2/3)和高段(7/8)都丟了 → 中間搭子做不成，那<b>整門</b>他不太會聽。屬機率讀牌、不是保證安全。',
-      gua: '<b>讀牌 · 六掛</b>：每門分小掛(1-4)、大掛(6-9)共六掛。玩家先丟沒用的牌區 → 最晚才動的那一掛＝真牌＝最危險，靠<b>捨牌先後</b>讀出來。',
+      press: '<b>讀牌 · 向下壓</b>：對手丟低段(2/3)→小掛半條(1-4)不做、丟高段(7/8)→大掛半條(6-9)不做、兩頭都丟→整條安全。挑<b>最安全</b>的那半。屬機率讀牌、不是保證。',
+      gua: '<b>讀牌 · 六掛</b>：每門分小掛(1-4)、大掛(6-9)共六掛。<b>最晚才動</b>的掛(剛拆到)＋<b>整段沒出現</b>的掛(整條留著)都＝真牌熱區，靠捨牌先後讀出來。',
       nobe: '<b>讀牌 · 衍牌</b>：對手拆搭丟一張 N，真牌就落在 <b>N 的鄰近</b>(N±1、N±2)——越貼近、能組越多搭子的牌越危險。',
     };
     html = readNotes[rsub];
@@ -976,7 +1015,7 @@ function init() {
   document.querySelectorAll('.sub').forEach(b => b.addEventListener('click', () => setSub(b.dataset.sub)));
   document.querySelectorAll('.rsub').forEach(b => b.addEventListener('click', () => setRSub(b.dataset.rsub)));
   document.querySelectorAll('#atk-card .choice').forEach(b => b.addEventListener('click', () => onAnswerAtk(b.dataset.ans)));
-  document.querySelectorAll('#press-choices .choice').forEach(b => b.addEventListener('click', () => onAnswerPress(+b.dataset.suit)));
+  document.querySelectorAll('#press-choices .choice').forEach(b => b.addEventListener('click', () => onAnswerPress(+b.dataset.suit, b.dataset.half)));
   document.getElementById('next').addEventListener('click', nextProblem);
   document.getElementById('def-next').addEventListener('click', nextProblem);
   document.getElementById('atk-next').addEventListener('click', nextProblem);

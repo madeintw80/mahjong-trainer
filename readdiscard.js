@@ -10,8 +10,8 @@
  *   讓 JS/Python 逐位對拍一致；安全/危險是教學相對判斷，不是真實放槍率。
  *
  * 三個子引擎：
- *   pressAnalyze 向下壓：一門低段(2/3)+高段(7/8)都被丟 → 整條相對安全
- *   guaAnalyze   六掛斷聽：每門小掛(1-4)/大掛(6-9)共六掛，最晚才丟的掛=真牌=最危險
+ *   pressAnalyze 向下壓：丟低段(2/3)→小掛半條安全、丟高段(7/8)→大掛半條安全、兩半都丟→整條安全
+ *   guaAnalyze   六掛斷聽：每門小掛(1-4)/大掛(6-9)共六掛，最晚才丟的掛 + 完全沒丟過的掛=真牌=最危險
  *   nobeAnalyze  衍牌險張：拆搭丟出 N → 用含 N 的搭子拆解算 N 鄰近哪張最危險
  *
  * 牌編號 0~33：0-8 萬 / 9-17 筒 / 18-26 索 / 27-33 字牌(讀捨牌河只看數字牌)
@@ -27,10 +27,11 @@
   function isNumber(t) { return t < 27; }
 
   // ===================================================================
-  //  ① 向下壓 pressAnalyze — 哪一門整條安全
+  //  ① 向下壓 pressAnalyze — 哪半條 / 整條安全
   // ===================================================================
   // 低段代表=牌2,3(n1,2)、高段代表=牌7,8(n6,7)。端牌1/9本來就常丟(不算訊號)、
   // 中央4/5/6太好用(丟了很可疑)，只有 2/3 與 7/8 被丟才代表「這一段放棄了」。
+  // P6-2 半門：丟低段核心→小掛半條(1-4)安全、丟高段核心→大掛半條(6-9)安全、兩半都丟→整條安全。
   const PRESS_LOW = new Set([1, 2]);
   const PRESS_HIGH = new Set([6, 7]);
 
@@ -42,8 +43,10 @@
       const ns = [...nset].sort((a, b) => a - b);
       const lowHit = ns.some(n => PRESS_LOW.has(n));
       const highHit = ns.some(n => PRESS_HIGH.has(n));
+      // P6-2 半門安全：丟了哪半的核心，哪半就相對安全(low_safe/high_safe)；兩半都安全=整條 pressed
+      const lowSafe = lowHit, highSafe = highHit;
       // ★ key 順序要和 Python dict 一致(JSON 對拍逐位比)
-      out.push({ suit: suit, pressed: lowHit && highHit, low_hit: lowHit, high_hit: highHit, discarded: ns });
+      out.push({ suit: suit, pressed: lowSafe && highSafe, low_hit: lowHit, high_hit: highHit, low_safe: lowSafe, high_safe: highSafe, discarded: ns });
     }
     return out;
   }
@@ -52,6 +55,7 @@
   //  ② 六掛斷聽 guaAnalyze — 哪一掛最危險(看捨牌順序)
   // ===================================================================
   // 小掛=牌1-4(n0-3)、大掛=牌6-9(n5-8)、牌5(n4)樞紐不歸掛
+  // P6-3 方案A：最晚出現的掛 + 完全沒出現的掛，並列都算最危險(danger)
   function guaOf(t) {
     if (!isNumber(t)) return null;
     const n = numOf(t);
@@ -74,10 +78,19 @@
         out.push({ suit: suit, gua: gua, first_turn: ft, present: ft !== null });
       }
     }
-    // 排序「危險→安全」，和 Python sort_key (present_rank, -ft, suit, gua_rank) 一致
+    // 「最晚出現」= present 掛裡 first_turn 最大者(可能並列)；沒任何掛出現時為 null
+    const presentFts = out.filter(o => o.present).map(o => o.first_turn);
+    const latest = presentFts.length ? Math.max(...presentFts) : null;
+    for (const o of out) {
+      // P6-3 danger：完全沒出現 或 最晚出現的 present 掛(方案A：兩來源並列最危險)
+      o.danger = (!o.present) || (o.first_turn === latest);
+    }
+    // 排序「危險→安全」，和 Python sort_key (danger_rank, present_rank, -ft, suit, gua_rank) 一致
     out.sort((a, b) => {
+      const da = a.danger ? 0 : 1, db = b.danger ? 0 : 1;
+      if (da !== db) return da - db;              // danger 掛排最前
       const pa = a.present ? 0 : 1, pb = b.present ? 0 : 1;
-      if (pa !== pb) return pa - pb;
+      if (pa !== pb) return pa - pb;              // danger 內：最晚 present 掛排在沒出現的掛前
       const fa = a.present ? a.first_turn : -1, fb = b.present ? b.first_turn : -1;
       if (fa !== fb) return fb - fa;              // first_turn 大(晚)的排前
       if (a.suit !== b.suit) return a.suit - b.suit;

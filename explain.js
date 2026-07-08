@@ -220,48 +220,79 @@
   const GUA_CN = { small: '小掛', big: '大掛' };
 
   // ---- ① 向下壓：為什麼某門整條安全 ----
-  function pressRead(prob, pickedSuit) {
-    const ans = prob.answer;
-    const r = prob.res.find(x => x.suit === ans);
+  function pressRead(prob, pickedSuit, pickedHalf) {
     const out = [];
+    const full = prob.full;
+    const suit = prob.answers[0].suit;                      // 答案都落在同一門
+    const r = prob.res.find(x => x.suit === suit);
     // discarded 是 n 值(0~8)，轉回牌名；低段=2/3(n1,2)、高段=7/8(n6,7)
-    const nameOf = n => tl(ans * 9 + n);
+    const nameOf = n => tl(suit * 9 + n);
     const lows = r.discarded.filter(n => n === 1 || n === 2).map(nameOf);
     const highs = r.discarded.filter(n => n === 6 || n === 7).map(nameOf);
-    out.push('✅ ' + SUIT_CN[ans] + '子整條安全：對手丟過 ' + lows.join('、') + '（低段）和 ' +
-             highs.join('、') + '（高段）');
-    out.push('為什麼：2/3 是低段、7/8 是高段的「搭子連接核心」，他把兩頭都當廢牌丟了 → ' +
-             SUIT_CN[ans] + '子這門根本沒有搭子在做 → 整條 1~9 都不太會聽');
-    if (pickedSuit != null && pickedSuit !== ans) {
-      const p = prob.res.find(x => x.suit === pickedSuit);
-      const miss = !p.low_hit ? '低段(2/3)還沒被丟過' : !p.high_hit ? '高段(7/8)還沒被丟過' : '兩頭還沒都表態';
-      out.push('⚠️ 你選的 ' + SUIT_CN[pickedSuit] + '子：' + miss +
-               ' → 那一段他可能還有搭子在做，不能算整條安全');
+    if (full) {
+      out.push('✅ ' + SUIT_CN[suit] + '子<b>整條安全</b>：低段丟過 ' + lows.join('、') + '、高段丟過 ' +
+               highs.join('、') + ' → 上下兩頭都放棄了');
+      out.push('為什麼整條：2/3(低段)和 7/8(高段)是搭子的「連接核心」，兩頭都當廢牌丟了 → ' +
+               SUIT_CN[suit] + '子這門根本沒搭子在做 → 整條 1~9 都不太會聽');
+    } else {
+      const half = prob.answers[0].half;
+      if (half === 'low') {
+        out.push('✅ ' + SUIT_CN[suit] + '子<b>小掛半條(1-4)安全</b>：對手丟過 ' + lows.join('、') + '（低段核心）');
+        out.push('為什麼只有半條：2/3 是低段的搭子連接核心，丟了 → 低段(1-4)沒搭子在做；' +
+                 '但高段(7/8)還沒丟 → 大掛半條(6-9)可能還有搭、<b>仍要防</b>');
+      } else {
+        out.push('✅ ' + SUIT_CN[suit] + '子<b>大掛半條(6-9)安全</b>：對手丟過 ' + highs.join('、') + '（高段核心）');
+        out.push('為什麼只有半條：7/8 是高段的搭子連接核心，丟了 → 高段(6-9)沒搭子在做；' +
+                 '但低段(2/3)還沒丟 → 小掛半條(1-4)可能還有搭、<b>仍要防</b>');
+      }
     }
-    out.push('💡 橫飛<b>向下壓</b>：對手捨的兩張夾住一門的低、高段(中間搭子做不成) → 那整門「向下壓」不要。' +
-             '這是<b>讀牌機率</b>不是保證，只是他聽這門的機會很低');
+    // 選錯：玩家選的半掛不在答案裡 → 那半的核心沒被丟過(丟了的話它就 safe、會列進答案)
+    if (pickedSuit != null && !prob.answers.some(a => a.suit === pickedSuit && a.half === pickedHalf)) {
+      const range = pickedHalf === 'low' ? '1-4' : '6-9';
+      const core = pickedHalf === 'low' ? '低段(2/3)' : '高段(7/8)';
+      out.push('⚠️ 你選的 ' + SUIT_CN[pickedSuit] + '子' + range + '：' + core +
+               ' 還沒被對手丟過 → 那半段他可能還有搭子在做，不算安全');
+    }
+    out.push('💡 橫飛<b>向下壓</b>：丟低段核心(2/3)→小掛半條不做、丟高段核心(7/8)→大掛半條不做、' +
+             '兩頭都丟→整條壓。這是<b>讀牌機率</b>不是保證，只是他聽那半的機會很低');
     return out;
   }
 
   // ---- ② 六掛：為什麼最晚出現的掛最危險 ----
   function guaRead(prob, pickedTile) {
-    const d = prob.dangerGua;
     const out = [];
-    out.push('⚠️ 最危險 ' + tl(prob.answer) + '：它屬於「' + SUIT_CN[d.suit] + GUA_CN[d.gua] +
-             '」，這一掛到第 ' + (d.first_turn + 1) + ' 巡才第一次被丟（六掛裡最晚出現）');
-    out.push('為什麼最晚=最危險：玩家一定先丟用不到的牌區(那些掛早早出現＝安全)；' +
-             '能撐到最後才被迫丟的掛，貼著他真正在用的牌 → 真牌就藏在這一掛');
-    // 對照最早出現的掛(present 已按危險排序，最後一個最早/最安全)
-    const early = prob.present[prob.present.length - 1];
-    if (early && early !== d) {
-      out.push('對照：「' + SUIT_CN[early.suit] + GUA_CN[early.gua] + '」第 ' + (early.first_turn + 1) +
-               ' 巡就丟了(最早)→ 這掛他老早放棄，相對安全');
+    const repOf = g => prob.cands.find(c => c.suit === g.suit && c.gua === g.gua);
+    const latePresent = prob.dangerList.find(x => x.present);   // 最晚出現的掛(有的話)
+    const absents = prob.dangerList.filter(x => !x.present);    // 完全沒出現的掛
+
+    const ansNames = prob.answers.map(t => tl(t)).join('、');
+    out.push('⚠️ 最危險（並列）：' + ansNames + ' —— 危險來自兩種不同訊號，都得防');
+    // (甲) 最晚出現的掛：剛拆到那附近
+    if (latePresent) {
+      const rep = repOf(latePresent);
+      out.push('①「' + SUIT_CN[latePresent.suit] + GUA_CN[latePresent.gua] + '」(候選 ' + (rep ? tl(rep.tile) : '?') +
+               ')到第 ' + (latePresent.first_turn + 1) + ' 巡<b>最晚</b>才第一次被丟：玩家先丟沒用的牌區，' +
+               '能撐到最後才吐＝剛拆到那附近＝真牌貼手');
     }
-    if (pickedTile != null && pickedTile !== prob.answer) {
-      out.push('你選的 ' + tl(pickedTile) + ' 所屬的掛比較早出現 → 沒那麼危險');
+    // (乙) 完全沒出現的掛：整條留著在做
+    if (absents.length) {
+      const names = absents.map(a => {
+        const rep = repOf(a);
+        return '「' + SUIT_CN[a.suit] + GUA_CN[a.gua] + '」(候選 ' + (rep ? tl(rep.tile) : '?') + ')';
+      }).join('、');
+      out.push('②' + names + '<b>整段完全沒丟過</b>：對手可能一路留著在做那條，真牌整條藏著、一樣危險');
     }
-    out.push('💡 橫飛<b>六掛斷聽</b>：每門分小掛(1-4)、大掛(6-9)共六掛，照捨牌先後排危險——' +
-             '最晚動的那一掛＝手牌重心＝真牌。同樣是機率讀牌，非保證');
+    out.push('為什麼並列：①剛拆到、②整條留著，來源不同但都危險——硬把「沒出現」當最安全會踩雷（真牌常藏在沒表態的掛）');
+    // 對照最安全的掛(res 排序最後一個=最早出現、非 danger)
+    const safest = prob.res[prob.res.length - 1];
+    if (safest && !safest.danger && safest.present) {
+      out.push('對照：「' + SUIT_CN[safest.suit] + GUA_CN[safest.gua] + '」第 ' + (safest.first_turn + 1) +
+               ' 巡就丟了(最早)→ 老早放棄那區，相對安全');
+    }
+    if (pickedTile != null && !prob.answers.includes(pickedTile)) {
+      out.push('你選的 ' + tl(pickedTile) + ' 所屬的掛「早早出現、又不是最晚」→ 他老早放棄那區，沒那麼危險');
+    }
+    out.push('💡 橫飛<b>六掛斷聽</b>：每門分小掛(1-4)、大掛(6-9)共六掛。<b>最晚才動</b>的掛(剛拆到)＋<b>完全沒表態</b>的掛(整條留著)都是真牌熱區。機率讀牌、非保證');
     return out;
   }
 

@@ -117,14 +117,17 @@
 
     <!-- ============ 讀牌 ① 向下壓(門選判斷題) ============ -->
     <section class="card mode-read rsub-press hide" id="press-card">
-      <div class="prompt">看對手的<b>捨牌河</b>——哪一門<b>整條安全</b>（他不太可能聽這門）？</div>
+      <div class="prompt">看對手的<b>捨牌河</b>——哪一段（半條或整條）<b>最安全</b>（他不太可能聽這半）？</div>
       <div class="oppo" id="press-oppo"><!-- 對手捨牌河 --></div>
-      <div class="choicebar" id="press-choices">
-        <button class="choice suit-m" data-suit="0">🌾 萬</button>
-        <button class="choice suit-p" data-suit="1">⭕ 筒</button>
-        <button class="choice suit-s" data-suit="2">🎋 索</button>
+      <div class="choicebar presshalf" id="press-choices">
+        <button class="choice suit-m" data-suit="0" data-half="low">🌾 萬 1-4</button>
+        <button class="choice suit-p" data-suit="1" data-half="low">⭕ 筒 1-4</button>
+        <button class="choice suit-s" data-suit="2" data-half="low">🎋 索 1-4</button>
+        <button class="choice suit-m" data-suit="0" data-half="high">🌾 萬 6-9</button>
+        <button class="choice suit-p" data-suit="1" data-half="high">⭕ 筒 6-9</button>
+        <button class="choice suit-s" data-suit="2" data-half="high">🎋 索 6-9</button>
       </div>
-      <div class="hint">對手把一門的低段(2/3)和高段(7/8)都丟了 → 那門他沒搭子在做</div>
+      <div class="hint">丟低段(2/3)→小掛半條(1-4)安全、丟高段(7/8)→大掛半條(6-9)安全、兩頭都丟→整條安全</div>
     </section>
 
     <section class="card result mode-read rsub-press hide" id="press-result" hidden>

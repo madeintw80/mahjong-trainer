@@ -1,6 +1,6 @@
 /* service worker — 離線快取 app shell
    ⚠️ 每次改版都要把 CACHE 版本號一起升(和 app.js 的 APP_VERSION 對齊)，否則使用者拿到舊快取 */
-const CACHE = 'mahjong-trainer-v0.5.1';
+const CACHE = 'mahjong-trainer-v0.6.0';
 const ASSETS = ['./', 'index.html', 'engine.js', 'defense.js', 'readdiscard.js', 'explain.js', 'tips.js', 'app.js', 'style.css', 'manifest.json', 'icon.svg'];
 
 self.addEventListener('install', e => {

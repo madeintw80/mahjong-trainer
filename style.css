@@ -154,8 +154,11 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .choice.locked{cursor:default; opacity:.6}
 .choice.correct{border-color:var(--good); background:rgba(30,132,73,.14); opacity:1}  /* 正解框綠 */
 .choice.wrong{border-color:var(--bad); background:rgba(192,57,43,.12); opacity:1}      /* 答錯框紅 */
-/* 讀牌·向下壓：三門選鈕依花色上色 */
+/* 讀牌·向下壓：半掛選鈕依花色上色 */
 .choice.suit-m{color:var(--man)} .choice.suit-p{color:var(--pin)} .choice.suit-s{color:var(--sou)}
+/* 半掛 6 宮格：3 欄 2 排(上排=低段小掛 1-4、下排=高段大掛 6-9)，視覺對應向下壓的上下段 */
+.choicebar.presshalf{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.presshalf .choice{padding:14px 4px; font-size:16px}
 
 /* ===== 讀牌·六掛：捨牌河小牌下方標「第幾巡」 ===== */
 .turn-wrap{display:flex; flex-direction:column; align-items:center; gap:1px}

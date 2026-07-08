@@ -12,8 +12,8 @@
    讓 Python 版與 JS 版(readdiscard.js)逐位對拍一致；安全/危險是教學相對判斷，不是真實放槍率。
 
 三個子引擎(各自獨立，對應三種橫飛讀牌技巧)：
-  1. press_analyze 向下壓：對手把一門的低段(2/3)和高段(7/8)都當廢牌丟了 → 這門他沒搭 → 整條相對安全
-  2. gua_analyze  六掛斷聽：每門分小掛(牌1-4)、大掛(牌6-9)共六掛；最晚才被丟的掛 = 貼手牌 = 真牌 = 最危險
+  1. press_analyze 向下壓：丟低段(2/3)→小掛半條安全、丟高段(7/8)→大掛半條安全、兩半都丟→整條安全
+  2. gua_analyze  六掛斷聽：每門分小掛(牌1-4)、大掛(牌6-9)共六掛；最晚才被丟的掛 + 完全沒丟過的掛 = 真牌 = 最危險
   3. nobe_analyze 衍牌險張：對手拆搭丟出一張 N → 用「含 N 的搭子拆解」算 N 鄰近哪張最危險
 
 牌編號 0~33：0-8 萬 / 9-17 筒 / 18-26 索 / 27-33 字牌(讀捨牌河只看數字牌，字牌一律略過)
@@ -62,13 +62,21 @@ PRESS_HIGH = {6, 7}   # n 值 → 牌 7、8
 
 def press_analyze(river):
     """
-    向下壓：逐門判斷是否「整條安全」。
+    向下壓：逐門判斷「哪半條 / 整條」相對安全。
     river = 對手捨牌河(牌編號 list)。★向下壓只看「有沒有丟過」，跟順序無關。
+
+    ★ P6-2 半門安全(這版新增)：向下壓不必「整條」才安全，常常只放棄「半條」——
+        丟過低段核心(2/3) → 低段沒搭子在做 → 「小掛半條(牌1-4)」相對安全(low_safe)；
+        丟過高段核心(7/8) → 高段沒搭子在做 → 「大掛半條(牌6-9)」相對安全(high_safe)；
+        兩半都放棄 → 整條安全(pressed)。牌5(樞紐)只有整條壓才算跟著安全。
+
     回傳 3 個 dict(萬/筒/索各一)：
         suit       花色 0/1/2
-        pressed    這門是不是被上下夾住 → 整條安全
-        low_hit    低段(2/3)有沒有被丟過
-        high_hit   高段(7/8)有沒有被丟過
+        pressed    整條安全 = low_safe and high_safe(相容舊欄位)
+        low_hit    低段(2/3)有沒有被丟過(原始訊號)
+        high_hit   高段(7/8)有沒有被丟過(原始訊號)
+        low_safe   小掛半條(牌1-4)相對安全 = low_hit(丟了低段核心→低段沒搭)
+        high_safe  大掛半條(牌6-9)相對安全 = high_hit(丟了高段核心→高段沒搭)
         discarded  這門捨過哪些 n 值(排序，給解釋/顯示用)
     """
     out = []
@@ -76,9 +84,14 @@ def press_analyze(river):
         ns = sorted({num_of(t) for t in river if is_number(t) and suit_of(t) == suit})
         low_hit = any(n in PRESS_LOW for n in ns)
         high_hit = any(n in PRESS_HIGH for n in ns)
-        pressed = low_hit and high_hit          # 低段+高段都放棄 = 整條安全
+        # 半門安全：丟了哪半的核心，哪半就相對安全(此版 safe 等價於 hit，但語意分層：
+        #   hit=「捨牌河出現的原始訊號」、safe=「讀出來的安全結論」，方便日後獨立演化門檻)
+        low_safe = low_hit
+        high_safe = high_hit
+        pressed = low_safe and high_safe         # 兩半都安全 = 整條安全
         out.append({'suit': suit, 'pressed': pressed,
-                    'low_hit': low_hit, 'high_hit': high_hit, 'discarded': ns})
+                    'low_hit': low_hit, 'high_hit': high_hit,
+                    'low_safe': low_safe, 'high_safe': high_safe, 'discarded': ns})
     return out
 
 
@@ -101,18 +114,23 @@ def gua_of(t):
 
 def gua_analyze(river):
     """
-    六掛斷聽：掃「有順序」的捨牌河，算每一掛「首次出現的巡數(index)」。
-    為什麼看首次出現：玩家一定先丟離手牌最遠、最沒用的牌區 → 那些掛「先出現」= 安全；
+    六掛斷聽：掃「有順序」的捨牌河，算每一掛「首次出現的巡數(index)」，
+    再標記每一掛是不是「並列最危險(danger)」。
+
+    ★ P6-3 方案A：危險有兩種來源，並列都算危險(不硬分唯一正解)——
+        (甲) 有出現的掛裡「最晚才第一次被丟」的 → 對手剛拆到那附近 = 真牌貼手；
+        (乙) 「整段完全沒丟過」的掛 → 對手可能一路留著在做那條 = 真牌整條藏著。
+      為什麼並列：兩種來源機制不同、但都危險；硬把「沒出現」當最安全會教錯牌感
+      (真牌常常就藏在完全沒表態的那一掛)。
+
+    為什麼看首次出現：玩家一定先丟離手牌最遠、最沒用的牌區 → 那些掛「早出現」= 安全；
       能撐到最後才被迫丟、或剛拆搭才吐出來的掛 = 貼著他真正在用的牌區 = 真牌 = 最危險。
     river = 對手捨牌河(牌編號 list，★順序有意義★)。
     回傳 6 個 dict，依「危險 → 安全」排序：
         suit / gua('small'|'big')
         first_turn  首次出現的 index(0 起算)；None = 這一掛整局都沒丟過
         present     這一掛有沒有出現過
-    ★排序規則：有出現的掛排前面，其中 first_turn 越大(越晚出現)越危險；
-      沒出現的掛排最後 —— 因為六掛「題目」聚焦『讀捨牌順序』，只從有出現的掛裡挑最危險，
-      強迫玩家真的去讀先後，而不是一眼找「哪個沒丟過」(那太好猜)。
-      (實戰上『完全沒表態』的掛其實也很危險，這點寫在題目解釋裡補充。)
+        danger      是不是「並列最危險」(最晚出現的 present 掛，或完全沒出現的掛)
     """
     first = {}                                   # (suit,gua) -> 首次出現的 index
     for i, t in enumerate(river):
@@ -127,14 +145,24 @@ def gua_analyze(river):
             out.append({'suit': suit, 'gua': gua,
                         'first_turn': ft, 'present': ft is not None})
 
+    # 「最晚出現」= 有出現的掛裡 first_turn 最大者(可能多掛並列同為最晚)；沒任何掛出現時為 None
+    present_fts = [o['first_turn'] for o in out if o['present']]
+    latest = max(present_fts) if present_fts else None
+    for o in out:
+        # danger：完全沒出現(乙) 或 最晚出現的 present 掛(甲) → 並列最危險
+        o['danger'] = (not o['present']) or (o['first_turn'] == latest)
+
     def sort_key(o):
         # 升序排出「危險 → 安全」：
-        #   present 的排前(0)、沒出現排後(1)；present 內 first_turn 越大越危險(取負號往前)；
-        #   完全同分再用 suit、gua 穩定排序(和 JS 版一致，才能逐位對拍)
+        #   danger 排最前(0)；danger 內讓「有順序訊號的最晚 present 掛」排在「沒出現的掛」前面
+        #   (present_rank 0 vs 1)、present 內 first_turn 越大越危險(取負號往前)；
+        #   非 danger(都是較早出現的 present)再依 first_turn 大→小；
+        #   完全同分用 suit、gua 穩定排序(和 JS 版一致，才能逐位對拍)
+        danger_rank = 0 if o['danger'] else 1
         present_rank = 0 if o['present'] else 1
         ft = o['first_turn'] if o['present'] else -1
         gua_rank = 0 if o['gua'] == 'small' else 1
-        return (present_rank, -ft, o['suit'], gua_rank)
+        return (danger_rank, present_rank, -ft, o['suit'], gua_rank)
 
     out.sort(key=sort_key)
     return out
