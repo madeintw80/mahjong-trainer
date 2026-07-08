@@ -57,14 +57,10 @@ main{max-width:640px; margin:0 auto; padding:14px}
   transition:transform .08s, box-shadow .08s; user-select:none;
 }
 .tile:active{transform:translateY(1px)}
-.tile .n{font-size:22px; font-weight:800; line-height:1}
-.tile .s{font-size:11px; margin-top:2px; opacity:.85}
-.tile.honor .n{font-size:20px}
-.tile.m{color:var(--man)} .tile.p{color:var(--pin)}
-.tile.s-suit{color:var(--sou)} .tile.z{color:var(--hon)}
+/* 牌面圖(tiles.js 的自繪 SVG)：透明疊在白牌上，只顯示花紋/文字。
+   pointer-events:none → 點擊穿透到外層 div，作答判定照舊。 */
+.tile .face{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
 @media (prefers-color-scheme: dark){ .tile{background:#f3efe6} }
-/* 讓字牌顏色更貼近真牌 */
-.tile.z.red .n{color:#c0392b} .tile.z.green .n{color:#1e8449} .tile.z.white .n{color:#5a6472}
 
 /* 作答後的標記 */
 .tile.picked{outline:3px solid var(--bad); outline-offset:1px}
@@ -111,9 +107,6 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .oppo-label{display:block; font-size:11.5px; color:var(--muted); margin-bottom:4px}
 .oppo-tiles{display:flex; flex-wrap:wrap; gap:3px; align-items:center}
 .tile.sm{width:30px; height:40px; border-radius:6px}
-.tile.sm .n{font-size:15px}
-.tile.sm.honor .n{font-size:13px}
-.tile.sm .s{font-size:8px; margin-top:1px}
 .meld{display:flex; gap:2px; padding:3px; margin-right:6px; border:1px dashed var(--felt2); border-radius:7px}
 @media (prefers-color-scheme: dark){ .meld{border-color:var(--sou)} }
 

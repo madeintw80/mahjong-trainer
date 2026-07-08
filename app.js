@@ -6,7 +6,7 @@
    白話解釋三邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.6.0';
+const APP_VERSION = 'v0.7.0';
 
 // ---- 難度標籤(牌效率/防守用；牌理改用子題型 bar) ----
 const DIFF_LABELS = {
@@ -71,21 +71,16 @@ function shantenText(s) { return s === 0 ? '聽牌' : s + ' 進聽'; }
 function jinTing(s) { return s === 0 ? '已聽牌' : s + ' 進聽'; }
 
 // ---- 畫一張牌(各模式共用；extra 加額外 class 如 'sm' 小牌) ----
-const HONOR_CLASS = { 31: 'red', 32: 'green', 33: 'white' }; // 中/發/白 上色
+// 牌面圖由 tiles.js 的 MJTiles.face(i) 產生(自繪 SVG)，
+// 外層 div 保留花色/honor/sm class 和 dataset.index → 選中/變暗回饋不受影響。
 function makeTile(i, extra) {
   const el = document.createElement('div');
   const suit = MJ.tileSuit(i);
   const suitClass = suit === 's' ? 's-suit' : suit;
   el.className = 'tile ' + suitClass + (extra ? ' ' + extra : '');
   el.dataset.index = i;
-  if (i >= 27) {
-    el.classList.add('honor');
-    if (HONOR_CLASS[i]) el.classList.add(HONOR_CLASS[i]);
-    el.innerHTML = '<span class="n">' + MJ.tileLabel(i) + '</span>';
-  } else {
-    el.innerHTML = '<span class="n">' + MJ.tileNum(i) + '</span><span class="s">' +
-      ({ m: '萬', p: '筒', s: '索' })[suit] + '</span>';
-  }
+  if (i >= 27) el.classList.add('honor');
+  el.innerHTML = MJTiles.face(i);          // ← 疊上透明的 SVG 牌面
   return el;
 }
 
