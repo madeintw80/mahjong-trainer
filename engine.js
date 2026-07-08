@@ -178,9 +178,90 @@
     return counts;
   }
 
+  // ---- 牌型分解(供解釋「怎麼算出幾進聽」顯示用) --------------------------
+  // 回傳「一種」達成最小向聽的分組，含實際牌：面子(3張)、搭子(2張)、雀頭、散張。
+  // 純為教學顯示，不影響 shanten/ukeire/bestDiscards(那些仍只看數字)。
+  const _blockMemo = new Map();
+
+  // 從第 i 種牌起，把剩牌拆成「面子最多、其次搭子最多」的分組(回實際牌)
+  function _bestBlocks(counts, i) {
+    while (i < 34 && counts[i] === 0) i++;
+    if (i >= 34) return { melds: [], taatsu: [] };
+    const key = counts.join(',') + '#' + i;
+    const hit = _blockMemo.get(key);
+    if (hit) return hit;
+
+    let best = { melds: [], taatsu: [] };
+    const consider = (melds, taatsu) => {              // 面子多優先，其次搭子多
+      if (melds.length > best.melds.length ||
+          (melds.length === best.melds.length && taatsu.length > best.taatsu.length)) {
+        best = { melds, taatsu };
+      }
+    };
+
+    counts[i]--;                                        // 分支1：丟一張廢牌(當散張)
+    { const r = _bestBlocks(counts, i); consider(r.melds, r.taatsu); }
+    counts[i]++;
+    if (counts[i] >= 3) {                               // 分支2：刻子
+      counts[i] -= 3; const r = _bestBlocks(counts, i);
+      consider([[i, i, i]].concat(r.melds), r.taatsu); counts[i] += 3;
+    }
+    if (i < 27 && i % 9 <= 6 && counts[i + 1] > 0 && counts[i + 2] > 0) {  // 分支3：順子
+      counts[i]--; counts[i + 1]--; counts[i + 2]--; const r = _bestBlocks(counts, i);
+      consider([[i, i + 1, i + 2]].concat(r.melds), r.taatsu);
+      counts[i]++; counts[i + 1]++; counts[i + 2]++;
+    }
+    if (counts[i] >= 2) {                               // 分支4：對子搭子(→刻)
+      counts[i] -= 2; const r = _bestBlocks(counts, i);
+      consider(r.melds, [[i, i]].concat(r.taatsu)); counts[i] += 2;
+    }
+    if (i < 27 && i % 9 <= 7 && counts[i + 1] > 0) {   // 分支5：兩面/邊張搭子
+      counts[i]--; counts[i + 1]--; const r = _bestBlocks(counts, i);
+      consider(r.melds, [[i, i + 1]].concat(r.taatsu)); counts[i]++; counts[i + 1]++;
+    }
+    if (i < 27 && i % 9 <= 6 && counts[i + 2] > 0) {   // 分支6：嵌張搭子
+      counts[i]--; counts[i + 2]--; const r = _bestBlocks(counts, i);
+      consider(r.melds, [[i, i + 2]].concat(r.taatsu)); counts[i]++; counts[i + 2]++;
+    }
+
+    _blockMemo.set(key, best);
+    return best;
+  }
+
+  // 分解整手牌：試每種雀頭(含不設雀頭)，取最小向聽、同分偏好「有雀頭」的分解(較好懂)
+  function decompose(counts, need) {
+    need = need || NEED_MELDS;
+    _blockMemo.clear();
+    const base = counts.slice();
+    let best = null;
+    const tryEye = (eye) => {
+      const c = base.slice();
+      if (eye >= 0) c[eye] -= 2;
+      const r = _bestBlocks(c, 0);
+      const m = Math.min(r.melds.length, need);
+      const t = Math.min(r.taatsu.length, need - m);
+      const sh = need * 2 - 2 * m - t - (eye >= 0 ? 1 : 0);
+      if (best && sh > best.shanten) return;
+      if (best && sh === best.shanten && !(eye >= 0 && best.pair === null)) return;  // 同分只在補上雀頭時才換
+      const melds = r.melds.slice(0, m);
+      const taatsu = r.taatsu.slice(0, t);
+      const used = new Array(34).fill(0);
+      for (const md of melds) for (const x of md) used[x]++;
+      for (const ta of taatsu) for (const x of ta) used[x]++;
+      if (eye >= 0) used[eye] += 2;
+      const floats = [];
+      for (let x = 0; x < 34; x++) for (let k = 0; k < base[x] - used[x]; k++) floats.push(x);
+      best = { shanten: sh, melds, taatsu, pair: eye >= 0 ? eye : null, floats };
+    };
+    tryEye(-1);                                         // 不設雀頭
+    for (let p = 0; p < 34; p++) if (base[p] >= 2) tryEye(p);
+    _blockMemo.clear();
+    return best;
+  }
+
   global.MJ = {
-    NEED_MELDS, shanten, ukeire, bestDiscards,
+    NEED_MELDS, shanten, ukeire, bestDiscards, decompose,
     tileLabel, tileSuit, tileNum, parseHand,
-    _clearMemo: () => _memo.clear()
+    _clearMemo: () => { _memo.clear(); _blockMemo.clear(); }
   };
 })(typeof window !== 'undefined' ? window : globalThis);

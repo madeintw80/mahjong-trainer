@@ -106,16 +106,50 @@
   }
 
   // ---- 牌理 ① 該攻該守解釋(幾進聽量尺) ----
+  // ---- 攻守「怎麼算出幾進聽」用的牌型分解顯示小工具 ----
+  const SUITZ = ['萬', '筒', '索'];
+  function compactTiles(tiles) {                    // [5,6,7]→"678萬"；字牌→逐張"東東東"
+    if (tiles[0] >= 27) return tiles.map(tl).join('');
+    return tiles.map(t => (t % 9 + 1)).join('') + SUITZ[Math.floor(tiles[0] / 9)];
+  }
+  function taatsuInfo(t) {                           // 搭子 → {label, kind, need(欠什麼)}
+    const a = t[0], b = t[1];
+    if (a === b) return { label: compactTiles(t), kind: '對子', need: tl(a) };            // 欠同張成刻
+    if (b === a + 2) return { label: compactTiles(t), kind: '嵌張', need: tl(a + 1) };    // 欠中間
+    const p = a % 9;                                // [a,a+1] 兩面/邊張
+    if (p === 0) return { label: compactTiles(t), kind: '邊張', need: tl(a + 2) };        // 12→欠3
+    if (p === 7) return { label: compactTiles(t), kind: '邊張', need: tl(a - 1) };        // 89→欠7
+    return { label: compactTiles(t), kind: '兩面', need: tl(a - 1) + '或' + tl(a + 2) };
+  }
+  // 把手牌拆成面子/搭子/雀頭，解釋「幾進聽」怎麼算出來(標出實際牌)
+  function shantenBreakdown(prob, s) {
+    const d = MJ.decompose(prob.counts);
+    const out = [];
+    const pieces = [];
+    if (d.melds.length) pieces.push('面子 <b>' + d.melds.map(compactTiles).join('、') + '</b>');
+    if (d.pair !== null) pieces.push('雀頭 <b>' + tl(d.pair) + tl(d.pair) + '</b>');
+    if (d.taatsu.length) pieces.push('搭子 <b>' +
+      d.taatsu.map(t => { const x = taatsuInfo(t); return x.label + '(' + x.kind + '欠' + x.need + ')'; }).join('、') + '</b>');
+    const floatTxt = d.floats.length ? '，散張 ' + d.floats.map(tl).join(' ') : '';
+    out.push('🀄 拆牌看組成：' + (pieces.length ? pieces.join('、') : '沒有現成面子/搭子') + floatTxt);
+    out.push('🧮 算幾進聽：胡牌要 <b>5 面子＋1 雀頭</b>；這手 ' + d.melds.length + ' 面子＋' + d.taatsu.length + ' 搭子＋' +
+      (d.pair !== null ? '有雀頭' : '沒雀頭') + ' → ' +
+      (s === 0 ? '<b>已聽牌</b>' : '還差 <b>' + s + ' 步</b>，就是 <b>' + s + ' 進聽</b>'));
+    return out;
+  }
+
   function attackDefense(prob) {
     const s = prob.shanten;
     const out = [];
-    if (prob.answer === 'atk') {
-      out.push('這手 ' + jinTing(s) + '，落在<b>「0～3 進聽」的好牌區 → 該攻</b>');
+    const atk = prob.answer === 'atk';
+    if (atk) out.push('這手 ' + jinTing(s) + '，落在<b>「0～3 進聽」的好牌區 → 該攻</b>');
+    else out.push('這手 ' + jinTing(s) + '，落在<b>「6 進聽以上」的爛牌區 → 該守</b>');
+    for (const line of shantenBreakdown(prob, s)) out.push(line);   // 怎麼算出幾進聽(拆牌標出牌)
+    if (atk) {
       if (s === 0) out.push('為什麼攻：已經聽牌了，當然全力打、等胡就好，沒有守的理由');
       else out.push('為什麼攻：離聽牌很近，全力追進張、搶速度最划算，這就是橫飛<b>「快速原則」</b>——用機率盡快聽牌');
       out.push('打法：每張捨牌都選「進張最大」的走法，別分心防守把好牌拖慢');
     } else {
-      out.push('這手 ' + jinTing(s) + '，落在<b>「6 進聽以上」的爛牌區 → 該守</b>');
       out.push('為什麼守：離聽牌太遠，硬追也快不起來——橫飛口訣<b>「爛牌擺明快不起來」</b>，這時保命比搶胡重要');
       out.push('打法：先留安全牌、盯著別人的牌河，寧可不胡也別放槍送大牌');
     }

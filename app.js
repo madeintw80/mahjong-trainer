@@ -6,7 +6,7 @@
    白話解釋三邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.7.2';
+const APP_VERSION = 'v0.7.3';
 
 // ---- 難度標籤(牌效率/防守用；牌理改用子題型 bar) ----
 const DIFF_LABELS = {
@@ -111,8 +111,12 @@ function drawFromWall(wall, n) {                          // 從指定牌牆抽 
 function genProblem() {
   MJ._clearMemo();
   const range = EFF_RANGE[level];
+  // 牌效率題也把字牌大幅降低(比照孤張)：字牌孤張/廢張太好丟＝送分，練不到數牌取捨。
+  // 絕大多數只發數牌，字牌僅保留 ~0.8% 出現率；deal() 迴圈與保底共用，字牌不會從保底漏進來。
+  const dealHonors = Math.random() < 0.008;             // 這題是否容許字牌：約 0.8%(穩穩 < 1%)
+  const deal = () => dealHonors ? drawHand(17) : drawFromWall(NUMBER_WALL, 17);
   for (let tries = 0; tries < 800; tries++) {
-    const counts = drawHand(17);
+    const counts = deal();
     const s17 = MJ.shanten(counts);
     if (s17 < range.lo || s17 > range.hi) continue;
     const best = MJ.bestDiscards(counts);
@@ -124,7 +128,7 @@ function genProblem() {
     if (optimal.length > 3) continue;
     return { counts, best, minSh, bestUk, optimal };
   }
-  const counts = drawHand(17);
+  const counts = deal();
   const best = MJ.bestDiscards(counts);
   const minSh = best[0].shanten, bestUk = best[0].ukeireTotal;
   return { counts, best, minSh, bestUk, optimal: best.filter(b => b.shanten === minSh && b.ukeireTotal === bestUk).map(b => b.discard) };
@@ -401,16 +405,24 @@ function genWait() {
 function makeMeldFrom(rest, preferBig) {
   const cnt = new Array(34).fill(0);
   for (const t of rest) cnt[t]++;
+  let chosen = null;                                     // 先選出副露，最後才從 rest 扣掉用到的牌
   if (preferBig) {
-    for (const t of [31, 32, 33, 27, 28, 29, 30]) if (cnt[t] >= 3) return { type: 'pon', tiles: [t, t, t] };
+    for (const t of [31, 32, 33, 27, 28, 29, 30]) if (cnt[t] >= 3) { chosen = { type: 'pon', tiles: [t, t, t] }; break; }
   }
-  const pons = [];
-  for (let t = 0; t < 34; t++) if (cnt[t] >= 3) pons.push(t);
-  if (pons.length) { const t = pons[randint(0, pons.length - 1)]; return { type: 'pon', tiles: [t, t, t] }; }
-  for (let s = 0; s < 3; s++) for (let p = 0; p <= 6; p++) {
-    const a = s * 9 + p; if (cnt[a] && cnt[a + 1] && cnt[a + 2]) return { type: 'chi', tiles: [a, a + 1, a + 2] };
+  if (!chosen) {
+    const pons = [];
+    for (let t = 0; t < 34; t++) if (cnt[t] >= 3) pons.push(t);
+    if (pons.length) { const t = pons[randint(0, pons.length - 1)]; chosen = { type: 'pon', tiles: [t, t, t] }; }
   }
-  return null;
+  if (!chosen) {
+    for (let s = 0; s < 3 && !chosen; s++) for (let p = 0; p <= 6 && !chosen; p++) {
+      const a = s * 9 + p; if (cnt[a] && cnt[a + 1] && cnt[a + 2]) chosen = { type: 'chi', tiles: [a, a + 1, a + 2] };
+    }
+  }
+  if (!chosen) return null;
+  // 🔴 把選中的牌從 rest 移除，否則第二個副露會重複拿同一批剩牌(紅中×7 bug：中中中+中中中=6張中，超過上限4)
+  for (const t of chosen.tiles) { const k = rest.indexOf(t); if (k >= 0) rest.splice(k, 1); }
+  return chosen;
 }
 
 // 防守出題：手牌 17 + 對手牌河 + 副露，篩成有風險落差的題
