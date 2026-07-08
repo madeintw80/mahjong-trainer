@@ -95,11 +95,11 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .note{font-size:12px; color:var(--muted); line-height:1.6; margin:6px 4px 30px}
 .note b{color:var(--ink)}
 
-/* ===== 模式分頁(4 顆：手機一排會擠→縮字級/gap+不換行；螢幕極窄才自動折成兩排) ===== */
-.modebar{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap}
+/* ===== 模式分頁(5 顆：手機一排會擠→縮字級/gap/min-width+不換行；螢幕極窄才自動折兩排) ===== */
+.modebar{display:flex; gap:5px; margin-bottom:10px; flex-wrap:wrap}
 .mode{
-  flex:1 1 0; min-width:68px; padding:11px 3px; border:1px solid var(--line); border-radius:10px;
-  background:var(--card); color:var(--muted); font-size:13px; font-weight:700; cursor:pointer;
+  flex:1 1 0; min-width:56px; padding:11px 2px; border:1px solid var(--line); border-radius:10px;
+  background:var(--card); color:var(--muted); font-size:12.5px; font-weight:700; cursor:pointer;
   white-space:nowrap; text-align:center;
 }
 .mode.on{background:var(--felt); color:#fff; border-color:var(--felt)}
@@ -133,13 +133,13 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .risk.r3{background:var(--bad)}
 .tag.warn{background:var(--mid)}
 
-/* ===== 牌理：子題型 bar(仿難度 bar，攻守/孤張/選聽切換) ===== */
+/* ===== 牌理/讀牌：子題型 bar(仿難度 bar，攻守/孤張/選聽、向下壓/六掛/衍牌切換) ===== */
 .subbar{display:flex; gap:8px; margin-bottom:12px}
-.sub{
+.sub, .rsub{
   flex:1; padding:9px 4px; border:1px solid var(--line); border-radius:10px;
   background:var(--card); color:var(--muted); font-size:13px; font-weight:600; cursor:pointer;
 }
-.sub.on{background:var(--felt); color:#fff; border-color:var(--felt)}
+.sub.on, .rsub.on{background:var(--felt); color:#fff; border-color:var(--felt)}
 
 /* ===== 牌理：該攻該守 判斷按鈕 ===== */
 .choicebar{display:flex; gap:12px; margin-top:14px}
@@ -154,6 +154,12 @@ main{max-width:640px; margin:0 auto; padding:14px}
 .choice.locked{cursor:default; opacity:.6}
 .choice.correct{border-color:var(--good); background:rgba(30,132,73,.14); opacity:1}  /* 正解框綠 */
 .choice.wrong{border-color:var(--bad); background:rgba(192,57,43,.12); opacity:1}      /* 答錯框紅 */
+/* 讀牌·向下壓：三門選鈕依花色上色 */
+.choice.suit-m{color:var(--man)} .choice.suit-p{color:var(--pin)} .choice.suit-s{color:var(--sou)}
+
+/* ===== 讀牌·六掛：捨牌河小牌下方標「第幾巡」 ===== */
+.turn-wrap{display:flex; flex-direction:column; align-items:center; gap:1px}
+.turn-no{font-size:9px; color:var(--muted); line-height:1; margin-top:1px}
 
 /* ===== 心法：手風琴摺疊卡 ===== */
 .tips-list{display:flex; flex-direction:column; gap:10px}

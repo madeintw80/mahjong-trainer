@@ -213,5 +213,89 @@
     return out;
   }
 
-  global.MJExplain = { efficiency, attackDefense, efficiencyIso, efficiencyWait, defense };
+  // =====================================================================
+  //  讀捨牌河解釋 (讀牌模式 readdiscard.js；全是「機率讀牌」不是保證安全)
+  // =====================================================================
+  const SUIT_CN = ['萬', '筒', '索'];
+  const GUA_CN = { small: '小掛', big: '大掛' };
+
+  // ---- ① 向下壓：為什麼某門整條安全 ----
+  function pressRead(prob, pickedSuit) {
+    const ans = prob.answer;
+    const r = prob.res.find(x => x.suit === ans);
+    const out = [];
+    // discarded 是 n 值(0~8)，轉回牌名；低段=2/3(n1,2)、高段=7/8(n6,7)
+    const nameOf = n => tl(ans * 9 + n);
+    const lows = r.discarded.filter(n => n === 1 || n === 2).map(nameOf);
+    const highs = r.discarded.filter(n => n === 6 || n === 7).map(nameOf);
+    out.push('✅ ' + SUIT_CN[ans] + '子整條安全：對手丟過 ' + lows.join('、') + '（低段）和 ' +
+             highs.join('、') + '（高段）');
+    out.push('為什麼：2/3 是低段、7/8 是高段的「搭子連接核心」，他把兩頭都當廢牌丟了 → ' +
+             SUIT_CN[ans] + '子這門根本沒有搭子在做 → 整條 1~9 都不太會聽');
+    if (pickedSuit != null && pickedSuit !== ans) {
+      const p = prob.res.find(x => x.suit === pickedSuit);
+      const miss = !p.low_hit ? '低段(2/3)還沒被丟過' : !p.high_hit ? '高段(7/8)還沒被丟過' : '兩頭還沒都表態';
+      out.push('⚠️ 你選的 ' + SUIT_CN[pickedSuit] + '子：' + miss +
+               ' → 那一段他可能還有搭子在做，不能算整條安全');
+    }
+    out.push('💡 橫飛<b>向下壓</b>：對手捨的兩張夾住一門的低、高段(中間搭子做不成) → 那整門「向下壓」不要。' +
+             '這是<b>讀牌機率</b>不是保證，只是他聽這門的機會很低');
+    return out;
+  }
+
+  // ---- ② 六掛：為什麼最晚出現的掛最危險 ----
+  function guaRead(prob, pickedTile) {
+    const d = prob.dangerGua;
+    const out = [];
+    out.push('⚠️ 最危險 ' + tl(prob.answer) + '：它屬於「' + SUIT_CN[d.suit] + GUA_CN[d.gua] +
+             '」，這一掛到第 ' + (d.first_turn + 1) + ' 巡才第一次被丟（六掛裡最晚出現）');
+    out.push('為什麼最晚=最危險：玩家一定先丟用不到的牌區(那些掛早早出現＝安全)；' +
+             '能撐到最後才被迫丟的掛，貼著他真正在用的牌 → 真牌就藏在這一掛');
+    // 對照最早出現的掛(present 已按危險排序，最後一個最早/最安全)
+    const early = prob.present[prob.present.length - 1];
+    if (early && early !== d) {
+      out.push('對照：「' + SUIT_CN[early.suit] + GUA_CN[early.gua] + '」第 ' + (early.first_turn + 1) +
+               ' 巡就丟了(最早)→ 這掛他老早放棄，相對安全');
+    }
+    if (pickedTile != null && pickedTile !== prob.answer) {
+      out.push('你選的 ' + tl(pickedTile) + ' 所屬的掛比較早出現 → 沒那麼危險');
+    }
+    out.push('💡 橫飛<b>六掛斷聽</b>：每門分小掛(1-4)、大掛(6-9)共六掛，照捨牌先後排危險——' +
+             '最晚動的那一掛＝手牌重心＝真牌。同樣是機率讀牌，非保證');
+    return out;
+  }
+
+  // ---- ③ 衍牌：為什麼 N 鄰近某張最危險 ----
+  const NOBE_SHAPE = { ryanmen: '兩面', kanchan: '嵌張', penchan: '邊張', shanpon: '雙碰' };
+  function nobeRead(prob, pickedTile) {
+    const top = prob.res[0];
+    const out = [];
+    const tie = prob.answers && prob.answers.length > 1;
+    if (tie) {
+      // 中央牌拆搭：左右鄰對稱、危險分相同 → 誠實講「兩鄰同險」(這才是衍牌真正的牌理)
+      const names = prob.answers.map(t => tl(t)).join('、');
+      out.push('⚠️ 最危險（並列）：' + names + '——拆掉含 ' + tl(prob.N) + ' 的搭子後，' +
+               tl(prob.N) + ' 的<b>左右鄰牌一樣危險</b>（兩邊都能組搭子聽牌）');
+    } else {
+      const shapeCn = top.shapes.map(s => NOBE_SHAPE[s]).join('、');
+      out.push('⚠️ 最危險 ' + tl(top.tile) + '（危險分 ' + top.score + '）：對手拆掉含 ' + tl(prob.N) +
+               ' 的搭子後，還能用 ' + shapeCn + ' 這些搭子聽到它');
+    }
+    out.push('為什麼真牌在 ' + tl(prob.N) + ' 附近：他拆一個含 ' + tl(prob.N) + ' 的搭子、丟出 ' + tl(prob.N) +
+             '，是為了讓「旁邊」成型才拆——搭子由相鄰牌組成，所以真牌就落在丟出牌的鄰近');
+    if (pickedTile != null && !prob.answers.includes(pickedTile)) {
+      const p = prob.res.find(x => x.tile === pickedTile);
+      out.push(p
+        ? '你選的 ' + tl(pickedTile) + '（危險分 ' + p.score + '）：也危險，但能聽到它的搭子較少、排在後面'
+        : '你選的牌離 ' + tl(prob.N) + ' 較遠，被聽到的機會低');
+    }
+    out.push('💡 橫飛<b>衍牌(N±1、N±2)</b>：拆搭丟 N，鄰牌最危險、越貼近越險。' +
+             '(橫飛實戰的精細排序帶經驗成分，這裡用「搭子數量」給你客觀的相對危險)');
+    return out;
+  }
+
+  global.MJExplain = {
+    efficiency, attackDefense, efficiencyIso, efficiencyWait, defense,
+    pressRead, guaRead, nobeRead
+  };
 })(typeof window !== 'undefined' ? window : globalThis);

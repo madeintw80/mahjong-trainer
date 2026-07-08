@@ -29,6 +29,7 @@
     <div class="modebar" id="modebar">
       <button class="mode on" data-mode="eff">🀄 牌效率</button>
       <button class="mode" data-mode="def">🛡️ 防守</button>
+      <button class="mode" data-mode="read">🔍 讀牌</button>
       <button class="mode" data-mode="lab">📚 牌理</button>
       <button class="mode" data-mode="tips">📖 心法</button>
     </div>
@@ -45,6 +46,13 @@
       <button class="sub on" data-sub="atk">⚔️ 攻守</button>
       <button class="sub" data-sub="iso">🎴 孤張</button>
       <button class="sub" data-sub="wait">🎯 選聽</button>
+    </div>
+
+    <!-- 子題型(讀牌用；預設隱藏，切到讀牌模式才顯示) -->
+    <div class="subbar hide" id="readbar">
+      <button class="rsub on" data-rsub="press">⬇️ 向下壓</button>
+      <button class="rsub" data-rsub="gua">🎋 六掛</button>
+      <button class="rsub" data-rsub="nobe">🔗 衍牌</button>
     </div>
 
     <!-- ============ 牌效率模式 ============ -->
@@ -107,6 +115,40 @@
       <button class="next" id="pick-next">下一題 ▶</button>
     </section>
 
+    <!-- ============ 讀牌 ① 向下壓(門選判斷題) ============ -->
+    <section class="card mode-read rsub-press hide" id="press-card">
+      <div class="prompt">看對手的<b>捨牌河</b>——哪一門<b>整條安全</b>（他不太可能聽這門）？</div>
+      <div class="oppo" id="press-oppo"><!-- 對手捨牌河 --></div>
+      <div class="choicebar" id="press-choices">
+        <button class="choice suit-m" data-suit="0">🌾 萬</button>
+        <button class="choice suit-p" data-suit="1">⭕ 筒</button>
+        <button class="choice suit-s" data-suit="2">🎋 索</button>
+      </div>
+      <div class="hint">對手把一門的低段(2/3)和高段(7/8)都丟了 → 那門他沒搭子在做</div>
+    </section>
+
+    <section class="card result mode-read rsub-press hide" id="press-result" hidden>
+      <div class="verdict" id="press-verdict"></div>
+      <ul class="explain" id="press-explain"></ul>
+      <div class="rank" id="press-rank"></div>
+      <button class="next" id="press-next">下一題 ▶</button>
+    </section>
+
+    <!-- ============ 讀牌 ② 六掛 / ③ 衍牌(點候選牌選最危險，共用一組卡) ============ -->
+    <section class="card mode-read rsub-pick hide" id="read-card">
+      <div class="prompt" id="read-prompt"></div>
+      <div class="oppo" id="read-oppo"><!-- 對手捨牌河 / 拆搭打出的牌 --></div>
+      <div class="hand" id="read-cands"></div>
+      <div class="hint" id="read-hint">點你覺得<b>最危險</b>的那一張</div>
+    </section>
+
+    <section class="card result mode-read rsub-pick hide" id="read-result" hidden>
+      <div class="verdict" id="read-verdict"></div>
+      <ul class="explain" id="read-explain"></ul>
+      <div class="rank" id="read-rank"></div>
+      <button class="next" id="read-next">下一題 ▶</button>
+    </section>
+
     <!-- ============ 心法(純教學卡，手風琴摺疊；內容由 tips.js + JS 生成) ============ -->
     <section class="mode-tips hide" id="tips-card">
       <div class="tips-list" id="tips-list"><!-- 摺疊卡由 renderTips() 產生 --></div>
@@ -117,6 +159,7 @@
 
   <script src="engine.js"></script>
   <script src="defense.js"></script>
+  <script src="readdiscard.js"></script>
   <script src="explain.js"></script>
   <script src="tips.js"></script>
   <script src="app.js"></script>

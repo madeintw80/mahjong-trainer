@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-Hant"><head><meta charset="utf-8"><title>readdiscard self-test</title>
+<style>body{font-family:monospace;padding:16px;background:#111;color:#eee}
+.pass{color:#4ecb7d}.fail{color:#ff6b5e}pre{white-space:pre-wrap}</style></head>
+<body>
+<h3 id="head">running…</h3>
+<pre id="out"></pre>
+<script src="readdiscard.js"></script>
+<script>
+// 載入 Python 產出的讀牌標準答案，逐題比對 JS 版 readdiscard.js
+(async function () {
+  const out = document.getElementById('out');
+  const head = document.getElementById('head');
+  try {
+    const vectors = await (await fetch('testvectors_read.json?' + Date.now())).json();
+    let fails = 0, checked = 0; const samples = [];
+    for (const v of vectors) {
+      let got;
+      if (v.func === 'press') got = MJRead.pressAnalyze(v.river);
+      else if (v.func === 'gua') got = MJRead.guaAnalyze(v.river);
+      else got = MJRead.nobeAnalyze(v.N, v.river);
+      checked++;
+      const a = JSON.stringify(got), b = JSON.stringify(v.expected);
+      if (a !== b) {
+        fails++;
+        if (samples.length < 8) samples.push({ func: v.func, N: v.N, river: v.river, got: got, expect: v.expected });
+      }
+    }
+    window.__selftest_read = { checked, fails, samples };
+    head.textContent = (fails === 0 ? '✅ PASS' : '❌ FAIL') + `  checked=${checked}  fails=${fails}`;
+    head.className = fails === 0 ? 'pass' : 'fail';
+    out.textContent = fails ? JSON.stringify(samples, null, 2) : 'JS 讀牌引擎與 Python 標準答案 100% 一致';
+  } catch (e) {
+    window.__selftest_read = { error: String(e) };
+    head.textContent = 'ERROR ' + e; head.className = 'fail';
+  }
+})();
+</script>
+</body></html>
