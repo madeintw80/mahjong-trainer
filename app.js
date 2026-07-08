@@ -6,7 +6,7 @@
    白話解釋三邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.7.1';
+const APP_VERSION = 'v0.7.2';
 
 // ---- 難度標籤(牌效率/防守用；牌理改用子題型 bar) ----
 const DIFF_LABELS = {
@@ -93,6 +93,17 @@ function drawHand(n) {
   const wall = shuffle(fullWall());
   const counts = new Array(34).fill(0);
   for (let k = 0; k < n; k++) counts[wall[k]]++;
+  return counts;
+}
+
+// 數牌牌牆(萬筒索共 27 種×4 張，不含字牌)。
+// 為什麼要獨立一副：字牌孤張永遠「一律先丟」＝送分題，混進孤張章節會太簡單，
+// 所以孤張題絕大多數只從這副數牌牆發牌(見 genIso)。
+const NUMBER_WALL = (() => { const w = []; for (let i = 0; i < 27; i++) for (let k = 0; k < 4; k++) w.push(i); return w; })();
+function drawFromWall(wall, n) {                          // 從指定牌牆抽 n 張(先 slice 複製再洗，不動到原牌牆)
+  const w = shuffle(wall.slice());
+  const counts = new Array(34).fill(0);
+  for (let k = 0; k < n; k++) counts[w[k]]++;
   return counts;
 }
 
@@ -288,13 +299,18 @@ function isolatedTiles(counts) {
 // 篩題：手牌有多張孤張，且丟不同孤張「進張差異明顯」→ 教連接力(中張留最後)
 function genIso() {
   MJ._clearMemo();
-  for (let tries = 0; tries < 2500; tries++) {
-    const counts = drawHand(17);
-    const best = MJ.bestDiscards(counts);
+  // 孤張章節要教的是「數牌的連接潛力」(中張鄰牌多、留最後)。字牌孤張永遠先丟＝送分，
+  // 混進來只會讓題目變簡單，所以絕大多數只從數牌牌牆發牌；字牌只保留極低出現率(< 1%)，
+  // 偶爾複習「字牌先丟」的觀念。deal() 迴圈與保底共用，確保字牌不會從保底漏進來。
+  const dealHonors = Math.random() < 0.008;             // 這題是否容許字牌：約 0.8%(留邊際，穩穩 < 1%)
+  const deal = () => dealHonors ? drawHand(17) : drawFromWall(NUMBER_WALL, 17);
+  for (let tries = 0; tries < 3500; tries++) {          // 只發數牌較難湊到「進張有落差」的題，tries 放寬一點
+    const counts = deal();
+    const iso = isolatedTiles(counts);                  // 先做便宜的孤張偵測(純掃 34 格)
+    if (iso.length < 2) continue;                       // 不到 2 張孤張就跳過：免算下面昂貴的 bestDiscards，生題快 ~3 倍
+    const best = MJ.bestDiscards(counts);               // 昂貴(算每張丟法的進張)：只在通過便宜篩選後才做
     const minSh = best[0].shanten;
     if (minSh < 1 || minSh > 3) continue;               // 1~3進聽：孤張連接潛力才反映在進張上
-    const iso = isolatedTiles(counts);
-    if (iso.length < 2) continue;                       // 要有多張孤張才有得選
     // 全局最佳丟法必須就是「丟某張孤張」(這樣正解才聚焦孤張，不是拆搭)
     if (!iso.includes(best[0].discard)) continue;
     // 各孤張丟法(維持最小進聽)之間進張要有落差
@@ -307,7 +323,12 @@ function genIso() {
     if (optimal.length > 3) continue;
     return { counts, best, minSh, bestUk, optimal, iso };
   }
-  return genProblem();                                  // 保底：退回一般牌效率題(結構相容)
+  // 保底：仍用同一副牌牆(不漏字牌)，退回結構相容的孤張題
+  const counts = deal();
+  const best = MJ.bestDiscards(counts);
+  const minSh = best[0].shanten, bestUk = best[0].ukeireTotal;
+  const optimal = best.filter(b => b.shanten === minSh && b.ukeireTotal === bestUk).map(b => b.discard);
+  return { counts, best, minSh, bestUk, optimal, iso: isolatedTiles(counts) };
 }
 
 // =====================================================================
