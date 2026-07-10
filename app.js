@@ -6,7 +6,7 @@
    白話解釋三邊都用 explain.js */
 'use strict';
 
-const APP_VERSION = 'v0.7.3';
+const APP_VERSION = 'v0.7.4';
 
 // ---- 難度標籤(牌效率/防守用；牌理改用子題型 bar) ----
 const DIFF_LABELS = {
@@ -46,7 +46,12 @@ function loadStats() {
   for (const m of ['eff', 'def', 'read', 'lab']) if (!s[m]) s[m] = blankOne();
   return s;
 }
-function saveStats() { localStorage.setItem(STATS_KEY, JSON.stringify(allStats)); }
+function saveStats() {
+  // 包 try/catch(比照 loadStats)：localStorage 寫入可能 throw(隱私模式/配額滿)，
+  // 失敗只 console.warn 不中斷作答流程，避免統計寫不進去就整個卡住答題
+  try { localStorage.setItem(STATS_KEY, JSON.stringify(allStats)); }
+  catch (e) { console.warn('saveStats 失敗，本次統計未存', e); }
+}
 function stats() { return allStats[mode]; }
 function renderStats() {
   const s = stats();
